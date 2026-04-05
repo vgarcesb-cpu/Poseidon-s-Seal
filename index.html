@@ -8,7 +8,7 @@
     ╔══════════════════════════════════════════════════════════════════════╗
     ║      SISTEMA POSEIDON'S SEAL — ACADEMIA DE GUERRA AÉREA — FACH      ║
     ║                                                                      ║
-    ║  Versión   : 1.0.0 — Fase 1                                         ║
+    ║  Versión   : 2.0.0 — Fase 1 + Fase 2 (Escáner QR) + Fase 3 (MyCloud)║
     ║  Repositorio: vgarcesb-cpu/Poseidon-s-Seal (GitHub Pages público)  ║
     ║  URL QR    : https://vgarcesb-cpu.github.io/Poseidon-s-Seal/?folio=║
     ║  Plataformas: Mac · Windows · Samsung S25 · PWA offline             ║
@@ -84,7 +84,7 @@
 
         /* ── TABS ──────────────────────────────────────────────── */
         .nav-tabs { background: #060e1c; border-bottom: 1px solid rgba(200,168,75,0.25); display: flex; flex-shrink: 0; }
-        .nav-tab  { flex: 1; padding: 9px 4px; text-align: center; font-size: 10px; font-weight: 700; color: #5a7aaa; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .nav-tab  { flex: 1; padding: 8px 2px; text-align: center; font-size: 9px; font-weight: 700; color: #5a7aaa; text-transform: uppercase; letter-spacing: 0.3px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; line-height: 1.3; }
         .nav-tab.activo { color: var(--dorado); border-bottom-color: var(--dorado); background: rgba(200,168,75,0.05); }
 
         /* ── SCREEN ────────────────────────────────────────────── */
@@ -288,7 +288,7 @@
 
     <!-- ─── TABS ────────────────────────────────────── -->
     <div class="nav-tabs">
-        <div class="nav-tab activo" id="tab-form"    onclick="cambiarTab('form')">📋 Nuevo Vale</div>
+        <div class="nav-tab activo" id="tab-form"    onclick="cambiarTab('form')">📋 Vale</div>
         <div class="nav-tab"        id="tab-history" onclick="cambiarTab('history')">📚 Historial</div>
         <div class="nav-tab"        id="tab-buscar"  onclick="cambiarTab('buscar')">🔍 Buscar</div>
         <div class="nav-tab"        id="tab-sync"    onclick="cambiarTab('sync')">☁️ Sync</div>
@@ -685,7 +685,7 @@
 <script>
 // ════════════════════════════════════════════════════════════════════════
 // SISTEMA POSEIDON'S SEAL — Academia de Guerra Aérea — FACH
-// Versión 1.0.0 · Fase 1
+// Versión 2.0.0 · Fase 1 + Fase 2 + Fase 3
 // Repositorio: https://github.com/vgarcesb-cpu/aga-vale
 // ════════════════════════════════════════════════════════════════════════
 
