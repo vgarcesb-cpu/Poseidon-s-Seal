@@ -40,6 +40,8 @@
     <link rel="apple-touch-icon" href="icono.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- FASE 2: Escáner QR con cámara S25 -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         :root {
             --azul:    #0a1628;
@@ -209,6 +211,51 @@
         /* ── SECTION PAD ────────────────────────────────────────── */
         .sp { padding: 14px; }
 
+        /* ── FASE 2: ESCÁNER QR ─────────────────────────────────── */
+        .scanner-overlay { position:fixed; inset:0; background:#000; z-index:1000; display:none; flex-direction:column; }
+        .scanner-overlay.show { display:flex; }
+        .scanner-header { background:linear-gradient(135deg,#050d1a,#0d2248); border-bottom:2px solid var(--dorado); padding:12px 16px; display:flex; align-items:center; gap:12px; flex-shrink:0; }
+        .scanner-header img { width:36px; height:36px; border-radius:50%; border:1.5px solid var(--dorado); }
+        .scanner-title { font-size:13px; font-weight:800; color:var(--dorado); text-transform:uppercase; letter-spacing:0.5px; }
+        .scanner-sub   { font-size:10px; color:#7a9cc8; }
+        #scanner-viewport { flex:1; position:relative; overflow:hidden; background:#000; }
+        #reader { width:100%; height:100%; }
+        /* Marco de escaneo animado */
+        .scan-frame { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:10; }
+        .scan-box { width:220px; height:220px; position:relative; }
+        .scan-box::before,.scan-box::after { content:""; position:absolute; width:40px; height:40px; border-color:var(--dorado); border-style:solid; }
+        .scan-box::before { top:0; left:0; border-width:3px 0 0 3px; }
+        .scan-box::after  { bottom:0; right:0; border-width:0 3px 3px 0; }
+        .scan-corner-tr { position:absolute; top:0; right:0; width:40px; height:40px; border:3px solid var(--dorado); border-left:0; border-bottom:0; }
+        .scan-corner-bl { position:absolute; bottom:0; left:0; width:40px; height:40px; border:3px solid var(--dorado); border-right:0; border-top:0; }
+        .scan-line { position:absolute; left:10px; right:10px; height:2px; background:linear-gradient(90deg,transparent,var(--dorado),transparent); animation:scanAnim 2s linear infinite; top:10px; }
+        @keyframes scanAnim { 0%{top:10px} 100%{top:200px} }
+        .scanner-hint { position:absolute; bottom:0; left:0; right:0; background:rgba(5,13,26,0.92); padding:14px; text-align:center; z-index:11; }
+        .scanner-hint p { font-size:12px; color:#a0c0e8; margin-bottom:4px; }
+        .scanner-result-box { position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(5,13,26,0.96); display:none; align-items:center; justify-content:center; flex-direction:column; z-index:20; padding:24px; }
+        .scanner-result-box.show { display:flex; }
+        .sr-icon  { font-size:52px; margin-bottom:10px; }
+        .sr-folio { font-family:"Courier New",monospace; font-size:16px; font-weight:bold; color:var(--dorado); margin-bottom:6px; }
+        .sr-sub   { font-size:12px; color:#7a9cc8; margin-bottom:20px; text-align:center; }
+        .scanner-footer { background:#060e1c; border-top:1px solid rgba(200,168,75,0.25); padding:12px 16px; display:flex; gap:10px; flex-shrink:0; padding-bottom:calc(12px + var(--safe-bottom)); }
+
+        /* ── FASE 3: MYCLOUD SYNC ───────────────────────────────── */
+        .cloud-panel { background:#fff; border-radius:14px; padding:14px; margin-bottom:12px; box-shadow:0 2px 16px rgba(0,0,0,0.12); }
+        .cloud-status { display:flex; align-items:center; gap:10px; padding:12px; background:var(--gris); border-radius:10px; margin-bottom:12px; }
+        .cloud-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; transition:background 0.3s; }
+        .cloud-dot.verde   { background:var(--verde); box-shadow:0 0 8px rgba(26,158,92,0.5); }
+        .cloud-dot.rojo    { background:var(--rojo); }
+        .cloud-dot.naranja { background:var(--naranja); animation:pulse 1.5s infinite; }
+        .cloud-dot.gris    { background:#aaa; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .cloud-info { flex:1; }
+        .cloud-info .ci-label { font-size:10px; color:#888; text-transform:uppercase; letter-spacing:0.3px; }
+        .cloud-info .ci-val   { font-size:13px; font-weight:700; color:#111; }
+        .sync-log { background:#111; border-radius:8px; padding:10px; font-family:"Courier New",monospace; font-size:10px; color:#4af; max-height:120px; overflow-y:auto; margin-bottom:10px; }
+        .sync-log .log-ok  { color:#4af; }
+        .sync-log .log-err { color:#f66; }
+        .sync-log .log-warn{ color:#fa4; }
+
         /* ── PRINT ──────────────────────────────────────────────── */
         #print-area { display: none; }
         @media print {
@@ -242,6 +289,7 @@
         <div class="nav-tab activo" id="tab-form"    onclick="cambiarTab('form')">📋 Nuevo Vale</div>
         <div class="nav-tab"        id="tab-history" onclick="cambiarTab('history')">📚 Historial</div>
         <div class="nav-tab"        id="tab-buscar"  onclick="cambiarTab('buscar')">🔍 Buscar</div>
+        <div class="nav-tab"        id="tab-sync"    onclick="cambiarTab('sync')">☁️ Sync</div>
     </div>
 
     <!-- ════════════════════════════════════════════════
@@ -407,11 +455,121 @@
                 <input type="text" class="campo-input" id="input-busqueda" placeholder="AGA-2026-... o nombre...">
             </div>
             <button class="btn btn-azul" onclick="buscarVale()">BUSCAR</button>
+            <!-- FASE 2: Botón escáner QR -->
+            <button class="btn btn-dorado" style="margin-top:6px;" onclick="abrirEscaner()">
+                📷 ESCANEAR QR CON CÁMARA
+            </button>
         </div>
         <div id="resultado-busqueda"></div>
     </div>
 
+    <!-- ════════════════════════════════════════════════
+         SCREEN: SYNC MYCLOUD — FASE 3
+    ════════════════════════════════════════════════ -->
+    <div id="screen-sync" class="screen sp" style="display:none;">
+
+        <!-- Estado de conexión -->
+        <div class="cloud-panel">
+            <div class="card-title">☁️ WD MyCloud — Sincronización</div>
+            <div class="cloud-status">
+                <div class="cloud-dot gris" id="cloud-dot"></div>
+                <div class="cloud-info">
+                    <div class="ci-label">Estado red local</div>
+                    <div class="ci-val" id="cloud-status-text">Sin verificar</div>
+                </div>
+                <button class="btn btn-azul" style="width:auto;padding:8px 14px;font-size:11px;margin:0;" onclick="verificarMyCloud()">Verificar</button>
+            </div>
+
+            <!-- Configuración IP del MyCloud -->
+            <div class="campo-group">
+                <label class="campo-label">IP del WD MyCloud (red local)</label>
+                <input type="text" class="campo-input" id="mycloud-ip"
+                    placeholder="Ej: 192.168.1.100"
+                    value="">
+                <div style="font-size:10px;color:#888;margin-top:3px;">
+                    Encuéntrala en: WD My Cloud app → Dispositivo → Info de red
+                </div>
+            </div>
+            <div class="campo-group">
+                <label class="campo-label">Puerto (default 8080)</label>
+                <input type="text" class="campo-input" id="mycloud-puerto" placeholder="8080" value="8080">
+            </div>
+            <button class="btn btn-azul" onclick="guardarConfigCloud()">💾 Guardar configuración</button>
+        </div>
+
+        <!-- Acciones sync -->
+        <div class="cloud-panel">
+            <div class="card-title">🔄 Acciones</div>
+            <button class="btn btn-dorado" onclick="syncSubirTodo()" id="btn-subir">
+                ⬆️ SUBIR todos los vales al MyCloud
+            </button>
+            <button class="btn btn-azul" onclick="syncDescargarTodo()" id="btn-bajar">
+                ⬇️ DESCARGAR vales desde MyCloud
+            </button>
+            <button class="btn btn-verde" onclick="syncBidireccional()" id="btn-sync">
+                🔄 SYNC BIDIRECCIONAL (mezclar ambos)
+            </button>
+        </div>
+
+        <!-- Log de operaciones -->
+        <div class="cloud-panel">
+            <div class="card-title">📋 Log de operaciones</div>
+            <div class="sync-log" id="sync-log">
+                <div class="log-warn">» Sistema Poseidon's Seal v2.0 — MyCloud Sync listo</div>
+                <div class="log-warn">» Configura la IP de tu WD MyCloud y presiona Verificar</div>
+            </div>
+            <button class="btn btn-gris" style="font-size:11px;padding:8px;" onclick="limpiarLog()">🗑 Limpiar log</button>
+        </div>
+
+        <!-- Info técnica -->
+        <div class="cloud-panel">
+            <div class="card-title">ℹ️ Cómo funciona</div>
+            <div style="font-size:12px;color:#555;line-height:1.7;">
+                <p>📶 <strong>Con WiFi AGA:</strong> Sync automático al guardar un vale.</p>
+                <p>📵 <strong>Sin WiFi:</strong> Los vales se guardan local en S25. Al volver a la red, sync manual.</p>
+                <p>🔐 <strong>Seguridad:</strong> Comunicación solo en red local. Nunca sale a internet.</p>
+                <p>💡 <strong>Tip:</strong> WD MyCloud debe estar encendido y en la misma red WiFi que el S25.</p>
+            </div>
+        </div>
+    </div>
+
 </div><!-- /app -->
+
+<!-- ─── FASE 2: OVERLAY ESCÁNER QR ────────────────── -->
+<div class="scanner-overlay" id="scanner-overlay">
+    <div class="scanner-header">
+        <img src="icono.png" alt="AGA">
+        <div>
+            <div class="scanner-title">Escáner QR</div>
+            <div class="scanner-sub">Apunta la cámara al código QR del vale impreso</div>
+        </div>
+    </div>
+    <div id="scanner-viewport">
+        <div id="reader"></div>
+        <!-- Marco animado de escaneo -->
+        <div class="scan-frame">
+            <div class="scan-box">
+                <div class="scan-corner-tr"></div>
+                <div class="scan-corner-bl"></div>
+                <div class="scan-line"></div>
+            </div>
+        </div>
+        <!-- Caja de resultado -->
+        <div class="scanner-result-box" id="scanner-result">
+            <div class="sr-icon">✅</div>
+            <div class="sr-folio" id="sr-folio-text"></div>
+            <div class="sr-sub" id="sr-sub-text">Folio detectado — ¿Cargar registro?</div>
+            <button class="btn btn-dorado" style="margin-bottom:8px;" onclick="confirmarEscaneo()">📋 CARGAR REGISTRO</button>
+            <button class="btn btn-outline" onclick="reanudarEscaner()">↩ Escanear otro</button>
+        </div>
+    </div>
+    <div class="scanner-hint">
+        <p>📋 Busca el código QR en la esquina inferior del vale impreso</p>
+    </div>
+    <div class="scanner-footer">
+        <button class="btn-nav btn-atras" style="flex:1;" onclick="cerrarEscaner()">✕ Cerrar escáner</button>
+    </div>
+</div>
 
 <!-- ─── MODAL ──────────────────────────────────── -->
 <div class="modal-overlay" id="modal-confirm">
@@ -791,6 +949,8 @@ function guardarVale() {
         modoEdicion = true;
         setStatusUI("custodia");
         mostrarModal("✅", "Vale Registrado", "El bien está en custodia.", vale, () => imprimirVale());
+        // FASE 3: sync automático si MyCloud disponible en red
+        setTimeout(() => intentarSyncAutoMyCloud(), 1200);
     };
 }
 
@@ -1108,7 +1268,7 @@ function importarJSON(event) {
 // ── TABS ──────────────────────────────────────────────────────────────────
 function cambiarTab(tab) {
     document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("activo"));
-    ["form","history","buscar"].forEach(s => {
+    ["form","history","buscar","sync"].forEach(s => {
         document.getElementById("screen-" + s).style.display = "none";
     });
     document.getElementById("tab-"    + tab).classList.add("activo");
@@ -1117,6 +1277,17 @@ function cambiarTab(tab) {
     } else if (tab === "history") {
         document.getElementById("screen-history").style.display = "block";
         cargarHistorial();
+    } else if (tab === "sync") {
+        document.getElementById("screen-sync").style.display = "block";
+        // Cargar config guardada al abrir tab
+        const cfg = localStorage.getItem(MYCLOUD_DB_KEY);
+        if (cfg) {
+            try {
+                const { ip, puerto } = JSON.parse(cfg);
+                if (ip)     document.getElementById("mycloud-ip").value     = ip;
+                if (puerto) document.getElementById("mycloud-puerto").value = puerto;
+            } catch(e) {}
+        }
     } else {
         document.getElementById("screen-buscar").style.display = "block";
     }
@@ -1150,7 +1321,382 @@ function mostrarToast(msg) {
     setTimeout(() => t.classList.remove("show"), 2800);
 }
 
-// ── SERVICE WORKER (PWA offline) ──────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// FASE 2 — ESCÁNER QR CON CÁMARA S25
+// Librería: Html5-QRCode v2.3.8 (unpkg CDN)
+// ════════════════════════════════════════════════════════════════════════
+
+let html5QrCode   = null;
+let folioEscaneado = "";
+
+function abrirEscaner() {
+    document.getElementById("scanner-overlay").classList.add("show");
+    document.getElementById("scanner-result").classList.remove("show");
+    folioEscaneado = "";
+
+    // FIX-002 adaptado: verificar que la librería cargó
+    if (typeof Html5Qrcode === "undefined") {
+        mostrarToast("⚠️ Librería QR no disponible — necesitas internet");
+        cerrarEscaner();
+        return;
+    }
+
+    html5QrCode = new Html5Qrcode("reader");
+
+    // FIX-005 adaptado: pequeño delay antes de iniciar cámara en S25
+    setTimeout(() => {
+        html5QrCode.start(
+            { facingMode: "environment" },  // cámara trasera S25
+            {
+                fps: 10,
+                qrbox: { width: 220, height: 220 },
+                aspectRatio: 1.0
+            },
+            (decodedText) => onQRDetectado(decodedText),
+            (err) => { /* errores de frame, ignorar */ }
+        ).catch(err => {
+            mostrarToast("⚠️ No se pudo acceder a la cámara. Verifica permisos.");
+            cerrarEscaner();
+        });
+    }, 300);
+}
+
+function onQRDetectado(texto) {
+    // Extraer folio del QR — acepta URL completa o folio directo
+    let folioDet = texto;
+    try {
+        const url    = new URL(texto);
+        const param  = url.searchParams.get("folio");
+        if (param) folioDet = param;
+    } catch(e) {
+        // No es URL, usar el texto directo como folio
+    }
+
+    folioEscaneado = folioDet;
+
+    // Pausar escaneo al detectar
+    if (html5QrCode) {
+        html5QrCode.pause(true);
+    }
+
+    // Mostrar resultado
+    document.getElementById("sr-folio-text").textContent = folioEscaneado;
+    document.getElementById("sr-sub-text").textContent   =
+        folioEscaneado.startsWith("AGA-")
+            ? "Folio AGA detectado — ¿Cargar registro?"
+            : "Código detectado — ¿Buscar en base de datos?";
+    document.getElementById("scanner-result").classList.add("show");
+}
+
+function confirmarEscaneo() {
+    cerrarEscaner();
+    // FIX-002: guard !db
+    if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
+
+    const tx    = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req   = store.get(folioEscaneado);
+
+    req.onsuccess = () => {
+        // FIX-003: null-check
+        if (!req.result) {
+            mostrarToast("⚠️ Folio no encontrado — ¿Importaste el backup del otro dispositivo?");
+            // Pre-llenar el buscador con el folio escaneado
+            cambiarTab("buscar");
+            document.getElementById("input-busqueda").value = folioEscaneado;
+            return;
+        }
+        cargarValeEnFormulario(req.result);
+        mostrarToast("📋 Vale cargado: " + folioEscaneado);
+    };
+
+    req.onerror = () => mostrarToast("⚠️ Error al buscar en base de datos");
+}
+
+function reanudarEscaner() {
+    document.getElementById("scanner-result").classList.remove("show");
+    folioEscaneado = "";
+    if (html5QrCode) {
+        html5QrCode.resume();
+    }
+}
+
+function cerrarEscaner() {
+    document.getElementById("scanner-overlay").classList.remove("show");
+    if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
+        html5QrCode = null;
+    }
+    // FIX: limpiar el reader para evitar conflictos al reabrir
+    const reader = document.getElementById("reader");
+    if (reader) reader.innerHTML = "";
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// FASE 3 — SYNC WD MYCLOUD VÍA API REST RED LOCAL
+// El MyCloud expone una API REST en la red local WiFi
+// Solo funciona cuando S25 y MyCloud están en la misma red
+// ════════════════════════════════════════════════════════════════════════
+
+const MYCLOUD_DB_KEY   = "mycloud_config";
+const SYNC_FILE_PATH   = "/api/2.1/rest/files?path=/Public/Poseidon_Seal/";
+const SYNC_FILENAME    = "poseidon_backup.json";
+
+// Cargar config guardada al inicio
+(function cargarConfigCloud() {
+    const cfg = localStorage.getItem(MYCLOUD_DB_KEY);
+    if (cfg) {
+        try {
+            const { ip, puerto } = JSON.parse(cfg);
+            if (ip)     document.getElementById("mycloud-ip").value     = ip;
+            if (puerto) document.getElementById("mycloud-puerto").value = puerto;
+        } catch(e) {}
+    }
+})();
+
+function guardarConfigCloud() {
+    const ip     = document.getElementById("mycloud-ip").value.trim();
+    const puerto = document.getElementById("mycloud-puerto").value.trim() || "8080";
+    if (!ip) { mostrarToast("⚠️ Ingresa la IP del MyCloud"); return; }
+    localStorage.setItem(MYCLOUD_DB_KEY, JSON.stringify({ ip, puerto }));
+    mostrarToast("✅ Configuración guardada");
+    logSync("ok", `Configuración guardada: ${ip}:${puerto}`);
+}
+
+function getMyCloudURL() {
+    const ip     = document.getElementById("mycloud-ip").value.trim();
+    const puerto = document.getElementById("mycloud-puerto").value.trim() || "8080";
+    if (!ip) { mostrarToast("⚠️ Configura la IP del MyCloud primero"); return null; }
+    return `http://${ip}:${puerto}`;
+}
+
+async function verificarMyCloud() {
+    const base = getMyCloudURL();
+    if (!base) return;
+    setCloudDot("naranja", "Verificando conexión...");
+    logSync("warn", `Conectando a ${base} ...`);
+    try {
+        const res = await fetch(`${base}/api/2.1/rest/ping`, {
+            method: "GET",
+            signal: AbortSignal.timeout(4000)
+        });
+        if (res.ok || res.status === 401) {
+            // 401 = necesita auth pero el servidor responde = está en línea
+            setCloudDot("verde", "MyCloud conectado ✓");
+            logSync("ok", "✅ WD MyCloud encontrado en la red local");
+            mostrarToast("✅ MyCloud conectado");
+        } else {
+            throw new Error("Status: " + res.status);
+        }
+    } catch(err) {
+        if (err.name === "TimeoutError") {
+            setCloudDot("rojo", "Sin respuesta (timeout)");
+            logSync("err", "❌ Sin respuesta — verifica IP y que MyCloud esté encendido");
+        } else if (err.message.includes("Failed to fetch")) {
+            setCloudDot("rojo", "No encontrado en red local");
+            logSync("err", "❌ No encontrado — ¿Están en la misma red WiFi?");
+        } else {
+            setCloudDot("rojo", "Error: " + err.message);
+            logSync("err", "❌ Error: " + err.message);
+        }
+        mostrarToast("⚠️ MyCloud no disponible");
+    }
+}
+
+async function syncSubirTodo() {
+    const base = getMyCloudURL();
+    if (!base) return;
+    // FIX-002: guard !db
+    if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
+
+    logSync("warn", "⬆️ Iniciando subida al MyCloud...");
+    setCloudDot("naranja", "Subiendo...");
+
+    db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll().onsuccess = async (e) => {
+        const data    = e.target.result || [];
+        const payload = JSON.stringify(data, null, 2);
+        const blob    = new Blob([payload], { type: "application/json" });
+
+        try {
+            const url = `${base}${SYNC_FILE_PATH}${SYNC_FILENAME}`;
+            const res = await fetch(url, {
+                method: "PUT",
+                body: blob,
+                headers: { "Content-Type": "application/json" },
+                signal: AbortSignal.timeout(10000)
+            });
+
+            if (res.ok || res.status === 201) {
+                setCloudDot("verde", "Subida exitosa ✓");
+                logSync("ok", `✅ ${data.length} registros subidos al MyCloud`);
+                logSync("ok", `📁 Ruta: /Public/Poseidon_Seal/${SYNC_FILENAME}`);
+                mostrarToast(`✅ ${data.length} registros subidos`);
+            } else {
+                throw new Error("HTTP " + res.status);
+            }
+        } catch(err) {
+            setCloudDot("rojo", "Error en subida");
+            logSync("err", "❌ Error subiendo: " + err.message);
+            logSync("warn", "💡 Alternativa: usa Exportar DB para backup manual");
+            mostrarToast("⚠️ Error — usa Exportar DB como alternativa");
+        }
+    };
+}
+
+async function syncDescargarTodo() {
+    const base = getMyCloudURL();
+    if (!base) return;
+    if (!db)   { mostrarToast("⚠️ Base de datos no lista"); return; }
+
+    logSync("warn", "⬇️ Descargando desde MyCloud...");
+    setCloudDot("naranja", "Descargando...");
+
+    try {
+        const url = `${base}${SYNC_FILE_PATH}${SYNC_FILENAME}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+
+        const text = await res.text();
+        // FIX-007: try/catch en parse
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch(e) {
+            throw new Error("Archivo corrupto en MyCloud");
+        }
+
+        if (!Array.isArray(data)) throw new Error("Formato inválido");
+
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        data.forEach(item => tx.objectStore(STORE_NAME).put(item));
+        tx.oncomplete = () => {
+            setCloudDot("verde", "Descarga exitosa ✓");
+            logSync("ok", `✅ ${data.length} registros descargados del MyCloud`);
+            mostrarToast(`✅ ${data.length} registros importados`);
+            cargarHistorial();
+        };
+    } catch(err) {
+        setCloudDot("rojo", "Error en descarga");
+        logSync("err", "❌ Error descargando: " + err.message);
+        mostrarToast("⚠️ Error al descargar desde MyCloud");
+    }
+}
+
+async function syncBidireccional() {
+    const base = getMyCloudURL();
+    if (!base) return;
+    if (!db)   { mostrarToast("⚠️ Base de datos no lista"); return; }
+
+    logSync("warn", "🔄 Iniciando sync bidireccional...");
+    setCloudDot("naranja", "Sincronizando...");
+
+    // 1. Descargar del MyCloud
+    let remoteData = [];
+    try {
+        const url = `${base}${SYNC_FILE_PATH}${SYNC_FILENAME}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (res.ok) {
+            const text = await res.text();
+            try { remoteData = JSON.parse(text); } catch(e) { remoteData = []; }
+            if (!Array.isArray(remoteData)) remoteData = [];
+            logSync("ok", `📥 ${remoteData.length} registros en MyCloud`);
+        }
+    } catch(e) {
+        logSync("warn", "⚠️ No hay backup previo en MyCloud — se creará uno nuevo");
+    }
+
+    // 2. Obtener datos locales
+    db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll().onsuccess = async (e) => {
+        const localData = e.target.result || [];
+        logSync("ok", `💾 ${localData.length} registros locales en S25`);
+
+        // 3. Mezclar: gana el registro con fechaTs más reciente
+        const mapa = new Map();
+        [...remoteData, ...localData].forEach(item => {
+            const existing = mapa.get(item.id);
+            if (!existing || (item.fechaTs || 0) > (existing.fechaTs || 0)) {
+                mapa.set(item.id, item);
+            }
+        });
+        const merged = Array.from(mapa.values());
+        logSync("ok", `🔀 Resultado: ${merged.length} registros únicos (sin duplicados)`);
+
+        // 4. Guardar mezcla en IDB local
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        merged.forEach(item => tx.objectStore(STORE_NAME).put(item));
+        tx.oncomplete = async () => {
+            logSync("ok", "✅ Base de datos local actualizada");
+
+            // 5. Subir mezcla al MyCloud
+            try {
+                const url     = `${base}${SYNC_FILE_PATH}${SYNC_FILENAME}`;
+                const payload = JSON.stringify(merged, null, 2);
+                const res     = await fetch(url, {
+                    method: "PUT",
+                    body: new Blob([payload], { type: "application/json" }),
+                    headers: { "Content-Type": "application/json" },
+                    signal: AbortSignal.timeout(10000)
+                });
+                if (res.ok || res.status === 201) {
+                    setCloudDot("verde", "Sync completo ✓");
+                    logSync("ok", `✅ Sync bidireccional completo — ${merged.length} registros`);
+                    mostrarToast(`✅ Sync OK — ${merged.length} registros`);
+                } else {
+                    throw new Error("HTTP " + res.status);
+                }
+            } catch(err) {
+                setCloudDot("rojo", "Error subiendo mezcla");
+                logSync("err", "❌ Local actualizado pero falla al subir: " + err.message);
+                mostrarToast("⚠️ Local OK pero falla MyCloud — exporta JSON como backup");
+            }
+            cargarHistorial();
+        };
+    };
+}
+
+// ── Helpers de UI para Sync ──────────────────────────────────────────
+function setCloudDot(color, texto) {
+    const dot = document.getElementById("cloud-dot");
+    dot.className = "cloud-dot " + color;
+    document.getElementById("cloud-status-text").textContent = texto;
+}
+
+function logSync(tipo, msg) {
+    const log  = document.getElementById("sync-log");
+    const div  = document.createElement("div");
+    div.className = "log-" + tipo;
+    div.textContent = "[" + new Date().toLocaleTimeString("es-CL") + "] " + msg;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
+
+function limpiarLog() {
+    document.getElementById("sync-log").innerHTML =
+        '<div class="log-warn">» Log limpiado</div>';
+}
+
+// ── Sync automático al guardar (si MyCloud está configurado) ─────────
+async function intentarSyncAutoMyCloud() {
+    const cfg = localStorage.getItem(MYCLOUD_DB_KEY);
+    if (!cfg) return;
+    try {
+        const { ip, puerto } = JSON.parse(cfg);
+        if (!ip) return;
+        // Ping rápido para verificar si estamos en red local
+        const ping = await fetch(`http://${ip}:${puerto||"8080"}/api/2.1/rest/ping`, {
+            signal: AbortSignal.timeout(1500)
+        });
+        if (ping.ok || ping.status === 401) {
+            logSync("ok", "🔄 Auto-sync MyCloud...");
+            await syncSubirTodo();
+        }
+    } catch(e) {
+        // Sin MyCloud en esta red — silencioso
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SERVICE WORKER (PWA offline) ──────────────────────────────────────────
 // FIX: Sin SW, sin internet en terreno = app no carga
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
