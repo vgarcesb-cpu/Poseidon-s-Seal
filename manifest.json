@@ -1,0 +1,32 @@
+{
+  "name": "Poseidon's Seal — AGA FACH",
+  "short_name": "Poseidon's Seal",
+  "description": "Sistema de trazabilidad de bienes — Academia de Guerra Aérea, FACH",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "orientation": "portrait",
+  "lang": "es-CL",
+  "icons": [
+    { "src": "icono.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icono.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Nuevo Vale",
+      "short_name": "Nuevo",
+      "description": "Crear un nuevo vale de entrega",
+      "url": "./?nuevo=1",
+      "icons": [{ "src": "icono.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Historial",
+      "short_name": "Historial",
+      "description": "Ver historial de vales",
+      "url": "./?tab=history",
+      "icons": [{ "src": "icono.png", "sizes": "192x192" }]
+    }
+  ]
+}
