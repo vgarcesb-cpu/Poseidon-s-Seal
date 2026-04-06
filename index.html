@@ -416,7 +416,10 @@
                     <button class="btn btn-naranja" id="btn-devolucion" style="display:none" onclick="registrarDevolucion()">↩️ REGISTRAR DEVOLUCIÓN</button>
                     <button class="btn btn-verde"   id="btn-cerrar"     style="display:none" onclick="cerrarVale()">✅ CERRAR VALE</button>
                     <button class="btn btn-wa"      id="btn-wa"         style="display:none" onclick="enviarWhatsApp()">📱 ENVIAR POR WHATSAPP</button>
-                    <button class="btn btn-outline"                     onclick="nuevoVale()">+ NUEVO VALE</button>
+                    <!-- CAMBIO 2: EN EMISIÓN → Volver Atrás -->
+                    <button class="btn btn-outline" id="btn-volver-emision" onclick="irAPasoDirecto(3)">← VOLVER ATRÁS</button>
+                    <!-- CAMBIO 5: EN DEVOLUCIÓN/CERRADO → Nuevo Vale -->
+                    <button class="btn btn-outline" id="btn-nuevo"      style="display:none" onclick="nuevoVale()">+ NUEVO VALE</button>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:2px;">
                     <button class="btn btn-gris" style="font-size:10px;padding:9px;" onclick="exportarJSON()">📤 Exportar DB</button>
@@ -656,10 +659,14 @@
                     <div id="p-firma-entrega" style="font-weight:bold;margin-top:2px;font-size:10px;"></div>
                     <div style="color:#777;font-size:9px;">Firma — Quien Entrega</div>
                 </td>
-                <td style="width:28%;text-align:center;vertical-align:bottom;padding-bottom:4px;">
+                <td style="width:30%;text-align:center;vertical-align:bottom;padding-bottom:4px;">
                     <div id="p-qr-container" style="display:inline-block;"></div>
-                    <div style="font-size:8px;color:#888;margin-top:3px;">Escanear para ver registro</div>
-                    <div id="p-qr-url" style="font-size:7px;color:#aaa;word-break:break-all;margin-top:2px;"></div>
+                    <div style="font-size:8px;color:#555;margin-top:4px;font-weight:bold;">Escanear para identificar</div>
+                    <div id="p-qr-url" style="font-size:7px;color:#666;word-break:break-all;margin-top:2px;font-family:Courier New,monospace;"></div>
+                    <!-- Proceso en caso de pérdida del papel -->
+                    <div style="font-size:6px;color:#aaa;margin-top:3px;border-top:1px dashed #ddd;padding-top:2px;">
+                        En caso de pérdida: contactar al responsable del folio indicado
+                    </div>
                 </td>
                 <td style="width:36%;text-align:center;padding:0 8px;font-size:10px;vertical-align:bottom;">
                     <img id="p-sig-recibe" src="" style="height:48px;display:block;margin:0 auto 4px;max-width:170px;">
@@ -873,7 +880,7 @@ function irPaso(dir) {
     }
 }
 
-// FIX-009 ✅ Validación completa — el original solo validaba algunos campos
+// FIX-009 ✅ Validación completa por paso
 function validarPaso() {
     if (pasoActual === 1) {
         if (!document.getElementById("entrega").value.trim()) { mostrarToast("⚠️ Ingresa quien entrega"); return false; }
@@ -881,6 +888,19 @@ function validarPaso() {
     }
     if (pasoActual === 2) {
         if (!items.some(i => i.desc.trim())) { mostrarToast("⚠️ Agrega al menos un ítem con descripción"); return false; }
+    }
+    // CAMBIO 1: Firmas OBLIGATORIAS — ambas deben estar firmadas para avanzar al resumen
+    if (pasoActual === 3) {
+        const scE = document.getElementById("sig-entrega");
+        const scR = document.getElementById("sig-recibe");
+        const firmaVacia = (sc) => {
+            if (!sc || sc.width === 0) return true;
+            const datos = sc.getContext("2d").getImageData(0, 0, sc.width, sc.height).data;
+            for (let i = 3; i < datos.length; i += 4) { if (datos[i] > 10) return false; }
+            return true;
+        };
+        if (firmaVacia(scE)) { mostrarToast("⚠️ La firma de quien ENTREGA es obligatoria"); return false; }
+        if (firmaVacia(scR)) { mostrarToast("⚠️ La firma de quien RECIBE es obligatoria");  return false; }
     }
     return true;
 }
@@ -907,17 +927,31 @@ function setStatusUI(estado) {
     const m = mapa[estado] || mapa.emision;
     sb.className   = "status-box " + m.cls;
     sb.textContent = m.txt;
-    // FIX-005 en flujo: botones según estado
-    const btnG = document.getElementById("btn-guardar");
-    const btnI = document.getElementById("btn-imprimir");
-    const btnD = document.getElementById("btn-devolucion");
-    const btnC = document.getElementById("btn-cerrar");
-    const btnW = document.getElementById("btn-wa");
-    btnG.style.display = estado === "emision"    ? "block" : "none";
-    btnI.style.display = estado !== "emision"    ? "block" : "none";
-    btnD.style.display = estado === "custodia"   ? "block" : "none";
-    btnC.style.display = estado === "devolucion" ? "block" : "none";
-    btnW.style.display = estado !== "emision"    ? "block" : "none";
+
+    const btnG  = document.getElementById("btn-guardar");
+    const btnI  = document.getElementById("btn-imprimir");
+    const btnD  = document.getElementById("btn-devolucion");
+    const btnC  = document.getElementById("btn-cerrar");
+    const btnW  = document.getElementById("btn-wa");
+    const btnVO = document.getElementById("btn-volver-emision");
+    const btnN  = document.getElementById("btn-nuevo");
+
+    // CAMBIO 2: EN EMISIÓN → solo Guardar + Volver Atrás
+    btnG.style.display  = estado === "emision"    ? "block" : "none";
+    btnVO.style.display = estado === "emision"    ? "block" : "none";
+
+    // EN CUSTODIA → Imprimir + Registrar Devolución + WhatsApp
+    btnI.style.display  = estado !== "emision"    ? "block" : "none";
+    btnD.style.display  = estado === "custodia"   ? "block" : "none";
+
+    // EN DEVOLUCIÓN → Imprimir + Cerrar Vale + WhatsApp + Nuevo Vale
+    btnC.style.display  = estado === "devolucion" ? "block" : "none";
+
+    // WhatsApp visible en custodia, devolución y cerrado
+    btnW.style.display  = estado !== "emision"    ? "block" : "none";
+
+    // CAMBIO 5: Nuevo Vale solo en devolución y cerrado
+    btnN.style.display  = (estado === "devolucion" || estado === "cerrado") ? "block" : "none";
 }
 
 // ── GUARDAR ─────────────────────────────────────────────────────────────
@@ -950,8 +984,8 @@ function guardarVale() {
     tx.oncomplete = () => {
         modoEdicion = true;
         setStatusUI("custodia");
-        mostrarModal("✅", "Vale Registrado", "El bien está en custodia.", vale, () => imprimirVale());
-        // FASE 3: sync automático si MyCloud disponible en red
+        // CAMBIO 3: Modal custodia → "BMI Calidad de Préstamo"
+        mostrarModal("📋", "Vale Registrado", "BMI Calidad de Préstamo — Bien en custodia.", vale, () => imprimirVale());
         setTimeout(() => intentarSyncAutoMyCloud(), 1200);
     };
 }
@@ -995,14 +1029,19 @@ function cerrarVale() {
         store.put(data);
         tx.oncomplete = () => {
             setStatusUI("cerrado");
-            mostrarModal("✅", "Vale Cerrado", "El bien fue devuelto. Vale archivado.", data, () => imprimirVale());
+            // CAMBIO 4: Modal cerrado → "BMI Fue Devuelto, Vale Archivado"
+            mostrarModal("✅", "Vale Cerrado", "BMI fue devuelto — Vale archivado.", data, () => imprimirVale());
         };
     };
 }
 
 // ── IMPRIMIR / PDF ───────────────────────────────────────────────────────
 function imprimirVale() {
-    const qrUrl = QR_BASE_URL + "?folio=" + encodeURIComponent(folio);
+    // QR = URL pública con folio → cualquier celular escanea y abre el registro
+    // Sin app instalada → abre navegador → carga la app web con el vale
+    const sb          = document.getElementById("status-form");
+    const estadoTexto = sb.textContent.replace("ESTADO: ", "").trim();
+    const qrUrl       = QR_BASE_URL + "?folio=" + encodeURIComponent(folio);
     document.getElementById("p-folio").textContent          = folio;
     document.getElementById("p-fecha").textContent          = document.getElementById("fecha-input").value;
     document.getElementById("p-entrega-nombre").textContent = document.getElementById("entrega").value;
@@ -1041,17 +1080,24 @@ function imprimirVale() {
     // Firmas en PDF
     if (sigEntregaURL) document.getElementById("p-sig-entrega").src = sigEntregaURL;
     if (sigRecibeURL)  document.getElementById("p-sig-recibe").src  = sigRecibeURL;
-    // QR en PDF
+    // QR en PDF — URL pública → cualquier celular abre el registro en el navegador
     const qrCont = document.getElementById("p-qr-container");
     qrCont.innerHTML = "";
-    document.getElementById("p-qr-url").textContent = qrUrl;
+    document.getElementById("p-qr-url").textContent = folio + " · " + estadoTexto;
     const qrDiv = document.createElement("div");
-    qrDiv.style.cssText = "width:80px;height:80px;";
+    qrDiv.style.cssText = "width:120px;height:120px;margin:0 auto;";
     qrCont.appendChild(qrDiv);
     try {
-        new QRCode(qrDiv, { text: qrUrl, width: 80, height: 80, colorDark: "#000", colorLight: "#fff", correctLevel: QRCode.CorrectLevel.M });
+        new QRCode(qrDiv, {
+            text:         qrUrl,
+            width:        120,
+            height:       120,
+            colorDark:    "#000",
+            colorLight:   "#fff",
+            correctLevel: QRCode.CorrectLevel.M
+        });
     } catch(e) {
-        qrDiv.innerHTML = `<div style="font-size:7px;text-align:center;word-break:break-all;">${folio}</div>`;
+        qrDiv.innerHTML = `<div style="font-size:7px;text-align:center;word-break:break-all;padding:4px;">${folio}</div>`;
     }
     setTimeout(() => window.print(), 700);
 }
