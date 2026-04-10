@@ -1204,7 +1204,7 @@ function irAPasoDirecto(paso) {
 // ── NUEVO VALE ────────────────────────────────────────────────────────────
 // FIX-008: limpia TODOS los campos
 function nuevoVale() {
-    folio       = "AGA-" + new Date().getFullYear() + "-" + (Math.floor(Math.random() * 9000) + 1000);
+    folio = "AGA-" + new Date().getFullYear() + "-" + Date.now().toString().slice(-6);
     modoEdicion = false;
     document.getElementById("folio-input").value      = folio;
     document.getElementById("folio-show").textContent = folio;
