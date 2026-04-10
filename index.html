@@ -910,7 +910,7 @@ function guardarVale() {
         firmaEntrega:  sigEntregaURL,
         firmaRecibe:   sigRecibeURL,
         estado:        "custodia",
-        historial:     [{ fecha: new Date().toLocaleString("es-CL"), accion: "Vale creado — bien en custodia" }]
+        historial: [{ fecha: new Date().toLocaleString("es-CL"), accion: modoEdicion ? "Vale actualizado" : "Vale creado — bien en custodia" }]
     };
     const tx = db.transaction(STORE_NAME, "readwrite");
     tx.objectStore(STORE_NAME).put(vale);
