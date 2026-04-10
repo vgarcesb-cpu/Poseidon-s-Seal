@@ -1053,7 +1053,7 @@ function enviarWhatsApp() {
                    `*Recibe:* ${document.getElementById("recibe").value}%0A` +
                    `*Lugar:* ${document.getElementById("lugar").value || "—"}%0A%0A` +
                    `*Ítems:*%0A${iList}%0A%0A🔗 _Ver registro:_ ${qrUrl}`;
-    window.open(`https://wa.me/?text=${msg}`, "_blank");
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
 }
 
 // ── HISTORIAL ─────────────────────────────────────────────────────────────
