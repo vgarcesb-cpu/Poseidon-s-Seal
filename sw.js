@@ -4,8 +4,8 @@
 // Estrategia: Cache-first para assets propios | Network-first para CDN
 // ════════════════════════════════════════════════════════════════════
 
-const CACHE_NAME    = "poseidon-seal-v1";
-const CACHE_CDN     = "poseidon-cdn-v1";
+const CACHE_NAME    = "poseidon-seal-v2";
+const CACHE_CDN     = "poseidon-cdn-v2";
 
 // Assets propios → siempre en caché (offline garantizado)
 const ASSETS_LOCAL = [
@@ -18,7 +18,7 @@ const ASSETS_LOCAL = [
 // CDN externos → se cachean al primer uso
 const ASSETS_CDN = [
     "https://cdn.tailwindcss.com",
-    "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+    "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
 ];
 
 // ── INSTALL ──────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ self.addEventListener("fetch", (e) => {
     if (!url.startsWith("http")) return;
 
     // CDN externos → Network-first, fallback a caché
-    if (url.includes("cdn.tailwindcss.com") || url.includes("cdnjs.cloudflare.com")) {
+    if (url.includes("cdn.tailwindcss.com") || url.includes("cdnjs.cloudflare.com") || url.includes("unpkg.com")) {
         e.respondWith(
             fetch(e.request).then(res => {
                 const clone = res.clone();
