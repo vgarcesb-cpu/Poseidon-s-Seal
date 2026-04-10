@@ -8,19 +8,19 @@
     ╔══════════════════════════════════════════════════════════════════════╗
     ║      SISTEMA POSEIDON'S SEAL — ACADEMIA DE GUERRA AÉREA — FACH      ║
     ║                                                                      ║
-    ║  Versión   : 2.0.0 — Fase 1 + Fase 2 (Escáner QR) + Fase 3 (MyCloud)║
-    ║  Repositorio: vgarcesb-cpu/Poseidon-s-Seal (GitHub Pages público)  ║
-    ║  URL QR    : https://vgarcesb-cpu.github.io/Poseidon-s-Seal/?folio=║
+    ║  Versión   : 2.0.1 — Hotfix sintaxis + guards IDB + canvas edición  ║
+    ║  Repositorio: vgarcesb-cpu/Poseidon-s-Seal (GitHub Pages público)   ║
+    ║  URL QR    : https://vgarcesb-cpu.github.io/Poseidon-s-Seal/?folio= ║
     ║  Plataformas: Mac · Windows · Samsung S25 · PWA offline             ║
     ║                                                                      ║
-    ║  ARQUITECTURA:                                                       ║
-    ║  · IndexedDB  — historial completo + estados + firmas               ║
-    ║  · PDF        — window.print() + área oculta + QR embebido          ║
-    ║  · QR         — qrcodejs (URL pública → carga registro por folio)   ║
-    ║  · PWA        — manifest.json + sw.js → funciona offline            ║
-    ║  · Backup     — exportar/importar JSON (Mac ↔ S25)                  ║
+    ║  CORRECCIONES v2.0.1 SOBRE v2.0.0:                                  ║
+    ║  HOT-001 │ const sb duplicado en imprimirVale() → SyntaxError fatal ║
+    ║  HOT-002 │ irAPasoDirecto() sin initCanvas ni setTimeout 150ms      ║
+    ║  HOT-003 │ tx.onerror ausente en 11 operaciones IDB                 ║
+    ║  HOT-004 │ firmas no se redibujan al retroceder en modo edición      ║
+    ║  HOT-005 │ validarPaso() bloqueaba avance si firma guardada en URL   ║
     ║                                                                      ║
-    ║  CORRECCIONES APLICADAS:                                             ║
+    ║  CORRECCIONES HEREDADAS v2.0.0:                                      ║
     ║  FIX-001 │ onerror en IndexedDB — falla sin aviso en Android        ║
     ║  FIX-002 │ guard !db antes de toda operación IDB                    ║
     ║  FIX-003 │ null-check en registros (devolución/cierre)              ║
@@ -42,7 +42,6 @@
     <link rel="shortcut icon" href="icono.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- FASE 2: Escáner QR con cámara S25 -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         :root {
@@ -64,16 +63,13 @@
         html, body { height: 100%; overflow: hidden; }
         body { font-family: "Segoe UI", system-ui, sans-serif; font-size: 14px; background: var(--azul); color: #111; }
 
-        /* ── APP SHELL ─────────────────────────────────────────── */
         .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 
-        /* ── HEADER ────────────────────────────────────────────── */
         .app-header {
             background: linear-gradient(135deg, #050d1a 0%, #0d2248 50%, #050d1a 100%);
             border-bottom: 2px solid var(--dorado);
             padding: calc(var(--safe-top) + 8px) 14px 8px;
-            display: flex; align-items: center; gap: 10px;
-            flex-shrink: 0;
+            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
         }
         .app-header img { width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--dorado); flex-shrink: 0; }
         .h-titulo .inst { font-size: 10px; font-weight: 700; color: var(--dorado); letter-spacing: 1.2px; text-transform: uppercase; }
@@ -82,15 +78,12 @@
         .h-right .h-label { font-size: 8px; color: #7a9cc8; text-transform: uppercase; }
         .h-folio { font-family: "Courier New", monospace; font-size: 11px; font-weight: bold; color: var(--dorado); }
 
-        /* ── TABS ──────────────────────────────────────────────── */
         .nav-tabs { background: #060e1c; border-bottom: 1px solid rgba(200,168,75,0.25); display: flex; flex-shrink: 0; }
         .nav-tab  { flex: 1; padding: 8px 2px; text-align: center; font-size: 9px; font-weight: 700; color: #5a7aaa; text-transform: uppercase; letter-spacing: 0.3px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; line-height: 1.3; }
         .nav-tab.activo { color: var(--dorado); border-bottom-color: var(--dorado); background: rgba(200,168,75,0.05); }
 
-        /* ── SCREEN ────────────────────────────────────────────── */
         .screen { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
-        /* ── STEPS BAR ─────────────────────────────────────────── */
         .steps-bar { background: var(--azul2); padding: 10px 14px 0; flex-shrink: 0; }
         .steps-track { display: flex; align-items: flex-start; justify-content: space-between; position: relative; }
         .steps-track::before { content: ""; position: absolute; top: 13px; left: 14px; right: 14px; height: 2px; background: #2a3f6a; z-index: 0; }
@@ -102,16 +95,13 @@
         .step-item.activo   .step-label { color: var(--dorado); }
         .step-item.completo .step-label { color: var(--verde); }
 
-        /* ── STEP PANELS ───────────────────────────────────────── */
         .steps-content { flex: 1; overflow: hidden; position: relative; }
         .step-panel { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
         .step-panel.activo { opacity: 1; pointer-events: all; }
 
-        /* ── CARDS ─────────────────────────────────────────────── */
         .card { background: var(--blanco); border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 16px rgba(0,0,0,0.12); }
         .card-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; color: var(--azul2); border-bottom: 2px solid var(--dorado); padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
 
-        /* ── CAMPOS ────────────────────────────────────────────── */
         .campo-group { margin-bottom: 10px; }
         .campo-label { font-size: 10px; font-weight: 700; color: #4a5a7a; margin-bottom: 4px; display: block; text-transform: uppercase; letter-spacing: 0.3px; }
         .campo-input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--borde); border-radius: 8px; font-size: 14px; font-family: inherit; color: #111; background: var(--gris); transition: all 0.2s; outline: none; -webkit-appearance: none; }
@@ -120,21 +110,18 @@
         textarea.campo-input { min-height: 65px; resize: none; }
         .campo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        /* ── STATUS BOX ────────────────────────────────────────── */
         .status-box { text-align: center; font-weight: 800; padding: 12px; margin-bottom: 14px; border-radius: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; border: 3px solid #000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         .s-emision    { background: #f0c30e !important; color: #000 !important; }
         .s-custodia   { background: #c0392b !important; color: #fff !important; }
         .s-devolucion { background: #d4680e !important; color: #fff !important; }
         .s-cerrado    { background: #1a9e5c !important; color: #fff !important; }
 
-        /* ── ÍTEMS ──────────────────────────────────────────────── */
         .item-wrap { background: var(--gris); border-radius: 10px; padding: 12px; margin-bottom: 10px; border: 1.5px solid var(--borde); position: relative; }
         .item-num  { font-size: 9px; font-weight: 800; color: var(--azul2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
         .btn-del-item { position: absolute; top: 10px; right: 10px; background: #fce8e8; border: 1px solid #f0b8b8; color: #c0392b; border-radius: 50%; width: 24px; height: 24px; font-size: 15px; cursor: pointer; line-height: 1; padding: 0; }
         .item-fila { display: grid; grid-template-columns: 1fr 80px; gap: 8px; }
         .btn-agregar { width: 100%; padding: 12px; background: linear-gradient(135deg, var(--azul2), var(--azul)); color: #fff; border: 2px dashed rgba(200,168,75,0.5); border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; }
 
-        /* ── FIRMAS ─────────────────────────────────────────────── */
         .firma-block { margin-bottom: 18px; }
         .firma-titulo { font-size: 12px; font-weight: 800; color: var(--azul2); margin-bottom: 3px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; }
         .firma-nombre { font-size: 11px; color: #666; text-align: center; margin-bottom: 6px; font-style: italic; min-height: 16px; }
@@ -142,14 +129,12 @@
         .sig-canvas { display: block; touch-action: none; width: 100%; height: 100%; }
         .btn-borrar { width: 100%; padding: 7px; margin-top: 5px; background: #eef0f5; border: 1px solid #d0d8e8; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit; color: #555; }
 
-        /* ── RESUMEN ────────────────────────────────────────────── */
         .r-header { background: linear-gradient(135deg, var(--azul), var(--azul2)); padding: 12px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid var(--dorado); border-radius: 14px 14px 0 0; }
         .r-header img { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--dorado); }
         .r-fila { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--gris); font-size: 12px; }
         .r-key  { color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
         .r-val  { font-weight: 700; color: #111; text-align: right; max-width: 58%; }
 
-        /* ── BOTONES ─────────────────────────────────────────────── */
         .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-family: inherit; transition: all 0.2s; box-shadow: 0 3px 8px rgba(0,0,0,0.12); margin-bottom: 8px; letter-spacing: 0.5px; }
         .btn-dorado  { background: linear-gradient(135deg, var(--dorado), var(--dorado2)); color: #fff; }
         .btn-azul    { background: linear-gradient(135deg, var(--azul2), var(--azul)); color: #fff; border: 1px solid rgba(200,168,75,0.3); }
@@ -160,7 +145,6 @@
         .btn-gris    { background: #7a8ca8; color: #fff; }
         .btn-outline { background: rgba(255,255,255,0.06); color: #7a9cc8; border: 1.5px solid rgba(255,255,255,0.12); }
 
-        /* ── NAV BAR PASOS ──────────────────────────────────────── */
         .nav-bar-pasos { background: linear-gradient(90deg, #060e1c, #0d2248); border-top: 1px solid rgba(200,168,75,0.25); padding: 10px 14px; display: flex; gap: 10px; flex-shrink: 0; padding-bottom: calc(10px + var(--safe-bottom)); }
         .btn-nav  { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
         .btn-atras    { background: rgba(255,255,255,0.07); color: #7a9cc8; border: 1.5px solid rgba(255,255,255,0.1); }
@@ -168,7 +152,6 @@
         .btn-siguiente.dorado { background: linear-gradient(135deg, var(--dorado), var(--dorado2)); border-color: var(--dorado); }
         .btn-nav:disabled { opacity: 0.3; pointer-events: none; }
 
-        /* ── HISTORIAL ──────────────────────────────────────────── */
         .h-item { background: #fff; border-radius: 10px; padding: 12px 13px; margin-bottom: 8px; border-left: 4px solid var(--azul2); cursor: pointer; transition: transform 0.15s; }
         .h-item:active { transform: scale(0.98); }
         .h-folio  { font-family: "Courier New", monospace; font-size: 11px; font-weight: bold; color: var(--azul2); }
@@ -183,12 +166,10 @@
         .b-devolucion { background: #fef0e0; color: #8a4000; }
         .b-cerrado    { background: #e0f5ec; color: #0a5a2a; }
 
-        /* ── FILTROS ────────────────────────────────────────────── */
         .filter-bar { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; }
         .f-btn { padding: 6px 12px; border-radius: 16px; border: 1.5px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: #7a9cc8; font-size: 10px; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; text-transform: uppercase; letter-spacing: 0.3px; }
         .f-btn.activo { background: var(--dorado); border-color: var(--dorado); color: #fff; }
 
-        /* ── MODAL ──────────────────────────────────────────────── */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 999; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.show { display: flex; }
         .modal-box { background: #fff; border-radius: 20px; padding: 26px 22px; width: 100%; max-width: 400px; text-align: center; animation: popIn 0.22s ease; }
@@ -202,18 +183,15 @@
         .m-key { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; display: block; }
         .m-val { font-weight: 700; color: #111; }
 
-        /* ── TOAST ──────────────────────────────────────────────── */
         .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--azul2); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12px; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 9999; border: 1px solid var(--dorado); white-space: nowrap; }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* ── EMPTY STATE ────────────────────────────────────────── */
         .empty { text-align: center; padding: 40px 20px; color: #7a9cc8; }
         .empty .e-icon { font-size: 36px; margin-bottom: 10px; }
 
-        /* ── SECTION PAD ────────────────────────────────────────── */
         .sp { padding: 14px; }
 
-        /* ── FASE 2: ESCÁNER QR ─────────────────────────────────── */
+        /* ESCÁNER QR */
         .scanner-overlay { position:fixed; inset:0; background:#000; z-index:1000; display:none; flex-direction:column; }
         .scanner-overlay.show { display:flex; }
         .scanner-header { background:linear-gradient(135deg,#050d1a,#0d2248); border-bottom:2px solid var(--dorado); padding:12px 16px; display:flex; align-items:center; gap:12px; flex-shrink:0; }
@@ -222,7 +200,6 @@
         .scanner-sub   { font-size:10px; color:#7a9cc8; }
         #scanner-viewport { flex:1; position:relative; overflow:hidden; background:#000; }
         #reader { width:100%; height:100%; }
-        /* Marco de escaneo animado */
         .scan-frame { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:10; }
         .scan-box { width:220px; height:220px; position:relative; }
         .scan-box::before,.scan-box::after { content:""; position:absolute; width:40px; height:40px; border-color:var(--dorado); border-style:solid; }
@@ -241,7 +218,7 @@
         .sr-sub   { font-size:12px; color:#7a9cc8; margin-bottom:20px; text-align:center; }
         .scanner-footer { background:#060e1c; border-top:1px solid rgba(200,168,75,0.25); padding:12px 16px; display:flex; gap:10px; flex-shrink:0; padding-bottom:calc(12px + var(--safe-bottom)); }
 
-        /* ── FASE 3: MYCLOUD SYNC ───────────────────────────────── */
+        /* MYCLOUD SYNC */
         .cloud-panel { background:#fff; border-radius:14px; padding:14px; margin-bottom:12px; box-shadow:0 2px 16px rgba(0,0,0,0.12); }
         .cloud-status { display:flex; align-items:center; gap:10px; padding:12px; background:var(--gris); border-radius:10px; margin-bottom:12px; }
         .cloud-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; transition:background 0.3s; }
@@ -258,7 +235,7 @@
         .sync-log .log-err { color:#f66; }
         .sync-log .log-warn{ color:#fa4; }
 
-        /* ── PRINT ──────────────────────────────────────────────── */
+        /* PRINT */
         #print-area { display: none; }
         @media print {
             body > *          { display: none !important; }
@@ -273,7 +250,7 @@
 <body>
 <div class="app">
 
-    <!-- ─── HEADER ──────────────────────────────────── -->
+    <!-- HEADER -->
     <div class="app-header">
         <img id="logo-header" src="icono.png" alt="AGA">
         <div class="h-titulo">
@@ -286,7 +263,7 @@
         </div>
     </div>
 
-    <!-- ─── TABS ────────────────────────────────────── -->
+    <!-- TABS -->
     <div class="nav-tabs">
         <div class="nav-tab activo" id="tab-form"    onclick="cambiarTab('form')">📋 Vale</div>
         <div class="nav-tab"        id="tab-history" onclick="cambiarTab('history')">📚 Historial</div>
@@ -294,12 +271,9 @@
         <div class="nav-tab"        id="tab-sync"    onclick="cambiarTab('sync')">☁️ Sync</div>
     </div>
 
-    <!-- ════════════════════════════════════════════════
-         SCREEN: FORMULARIO (4 pasos)
-    ════════════════════════════════════════════════ -->
+    <!-- SCREEN: FORMULARIO -->
     <div id="screen-form" class="screen" style="display:flex;flex-direction:column;overflow:hidden;">
 
-        <!-- Steps bar -->
         <div class="steps-bar">
             <div class="steps-track">
                 <div class="step-item activo" id="si-1"><div class="step-circle">1</div><div class="step-label">Datos</div></div>
@@ -309,10 +283,9 @@
             </div>
         </div>
 
-        <!-- Steps content -->
         <div class="steps-content">
 
-            <!-- PASO 1: DATOS -->
+            <!-- PASO 1 -->
             <div class="step-panel activo" id="panel-1">
                 <div class="card">
                     <div class="card-title">📋 Identificación</div>
@@ -362,7 +335,7 @@
                 </div>
             </div>
 
-            <!-- PASO 2: ÍTEMS -->
+            <!-- PASO 2 -->
             <div class="step-panel" id="panel-2">
                 <div class="card">
                     <div class="card-title">📦 Bienes / Materiales</div>
@@ -371,7 +344,7 @@
                 </div>
             </div>
 
-            <!-- PASO 3: FIRMAS -->
+            <!-- PASO 3 -->
             <div class="step-panel" id="panel-3">
                 <div class="card">
                     <div class="card-title">✍️ Firmas Digitales</div>
@@ -379,18 +352,18 @@
                         <div class="firma-titulo">Firma — Quien Entrega</div>
                         <div class="firma-nombre" id="nombre-entrega-firma"></div>
                         <div class="sig-wrap" id="wrap-entrega"><canvas class="sig-canvas" id="sig-entrega"></canvas></div>
-                        <button class="btn-borrar" onclick="limpiarFirma('sig-entrega')">🗑 Borrar firma</button>
+                        <button class="btn-borrar" onclick="limpiarFirmaCanvas('sig-entrega','entrega')">🗑 Borrar firma</button>
                     </div>
                     <div class="firma-block">
                         <div class="firma-titulo">Firma — Quien Recibe</div>
                         <div class="firma-nombre" id="nombre-recibe-firma"></div>
                         <div class="sig-wrap" id="wrap-recibe"><canvas class="sig-canvas" id="sig-recibe"></canvas></div>
-                        <button class="btn-borrar" onclick="limpiarFirma('sig-recibe')">🗑 Borrar firma</button>
+                        <button class="btn-borrar" onclick="limpiarFirmaCanvas('sig-recibe','recibe')">🗑 Borrar firma</button>
                     </div>
                 </div>
             </div>
 
-            <!-- PASO 4: RESUMEN -->
+            <!-- PASO 4 -->
             <div class="step-panel" id="panel-4">
                 <div id="status-form" class="status-box s-emision">ESTADO: EN EMISIÓN</div>
                 <div class="card" style="padding:0;overflow:hidden;">
@@ -416,9 +389,7 @@
                     <button class="btn btn-naranja" id="btn-devolucion" style="display:none" onclick="registrarDevolucion()">↩️ REGISTRAR DEVOLUCIÓN</button>
                     <button class="btn btn-verde"   id="btn-cerrar"     style="display:none" onclick="cerrarVale()">✅ CERRAR VALE</button>
                     <button class="btn btn-wa"      id="btn-wa"         style="display:none" onclick="enviarWhatsApp()">📱 ENVIAR POR WHATSAPP</button>
-                    <!-- CAMBIO 2: EN EMISIÓN → Volver Atrás -->
                     <button class="btn btn-outline" id="btn-volver-emision" onclick="irAPasoDirecto(3)">← VOLVER ATRÁS</button>
-                    <!-- CAMBIO 5: EN DEVOLUCIÓN/CERRADO → Nuevo Vale -->
                     <button class="btn btn-outline" id="btn-nuevo"      style="display:none" onclick="nuevoVale()">+ NUEVO VALE</button>
                 </div>
                 <div style="display:flex;gap:6px;margin-top:2px;">
@@ -429,16 +400,13 @@
             </div>
         </div>
 
-        <!-- Nav bar pasos -->
         <div class="nav-bar-pasos" id="nav-bar-pasos">
-            <button class="btn-nav btn-atras"    id="btn-atras"    disabled onclick="irPaso(-1)">← Atrás</button>
-            <button class="btn-nav btn-siguiente" id="btn-siguiente"         onclick="irPaso(1)">Siguiente →</button>
+            <button class="btn-nav btn-atras"     id="btn-atras"     disabled onclick="irPaso(-1)">← Atrás</button>
+            <button class="btn-nav btn-siguiente" id="btn-siguiente"          onclick="irPaso(1)">Siguiente →</button>
         </div>
     </div>
 
-    <!-- ════════════════════════════════════════════════
-         SCREEN: HISTORIAL
-    ════════════════════════════════════════════════ -->
+    <!-- SCREEN: HISTORIAL -->
     <div id="screen-history" class="screen sp" style="display:none;">
         <div class="filter-bar">
             <button class="f-btn activo" id="f-todos"      onclick="filtrarHistorial('todos')">Todos</button>
@@ -449,9 +417,7 @@
         <div id="lista-historial"></div>
     </div>
 
-    <!-- ════════════════════════════════════════════════
-         SCREEN: BUSCAR
-    ════════════════════════════════════════════════ -->
+    <!-- SCREEN: BUSCAR -->
     <div id="screen-buscar" class="screen sp" style="display:none;">
         <div class="card">
             <div class="card-title">🔍 Buscar Vale</div>
@@ -460,7 +426,6 @@
                 <input type="text" class="campo-input" id="input-busqueda" placeholder="AGA-2026-... o nombre...">
             </div>
             <button class="btn btn-azul" onclick="buscarVale()">BUSCAR</button>
-            <!-- FASE 2: Botón escáner QR -->
             <button class="btn btn-dorado" style="margin-top:6px;" onclick="abrirEscaner()">
                 📷 ESCANEAR QR CON CÁMARA
             </button>
@@ -468,12 +433,8 @@
         <div id="resultado-busqueda"></div>
     </div>
 
-    <!-- ════════════════════════════════════════════════
-         SCREEN: SYNC MYCLOUD — FASE 3
-    ════════════════════════════════════════════════ -->
+    <!-- SCREEN: SYNC MYCLOUD -->
     <div id="screen-sync" class="screen sp" style="display:none;">
-
-        <!-- Estado de conexión -->
         <div class="cloud-panel">
             <div class="card-title">☁️ WD MyCloud — Sincronización</div>
             <div class="cloud-status">
@@ -484,16 +445,10 @@
                 </div>
                 <button class="btn btn-azul" style="width:auto;padding:8px 14px;font-size:11px;margin:0;" onclick="verificarMyCloud()">Verificar</button>
             </div>
-
-            <!-- Configuración IP del MyCloud -->
             <div class="campo-group">
                 <label class="campo-label">IP del WD MyCloud (red local)</label>
-                <input type="text" class="campo-input" id="mycloud-ip"
-                    placeholder="Ej: 192.168.1.100"
-                    value="">
-                <div style="font-size:10px;color:#888;margin-top:3px;">
-                    Encuéntrala en: WD My Cloud app → Dispositivo → Info de red
-                </div>
+                <input type="text" class="campo-input" id="mycloud-ip" placeholder="Ej: 192.168.1.100" value="">
+                <div style="font-size:10px;color:#888;margin-top:3px;">Encuéntrala en: WD My Cloud app → Dispositivo → Info de red</div>
             </div>
             <div class="campo-group">
                 <label class="campo-label">Puerto (default 8080)</label>
@@ -501,32 +456,20 @@
             </div>
             <button class="btn btn-azul" onclick="guardarConfigCloud()">💾 Guardar configuración</button>
         </div>
-
-        <!-- Acciones sync -->
         <div class="cloud-panel">
             <div class="card-title">🔄 Acciones</div>
-            <button class="btn btn-dorado" onclick="syncSubirTodo()" id="btn-subir">
-                ⬆️ SUBIR todos los vales al MyCloud
-            </button>
-            <button class="btn btn-azul" onclick="syncDescargarTodo()" id="btn-bajar">
-                ⬇️ DESCARGAR vales desde MyCloud
-            </button>
-            <button class="btn btn-verde" onclick="syncBidireccional()" id="btn-sync">
-                🔄 SYNC BIDIRECCIONAL (mezclar ambos)
-            </button>
+            <button class="btn btn-dorado" onclick="syncSubirTodo()"       id="btn-subir">⬆️ SUBIR todos los vales al MyCloud</button>
+            <button class="btn btn-azul"   onclick="syncDescargarTodo()"   id="btn-bajar">⬇️ DESCARGAR vales desde MyCloud</button>
+            <button class="btn btn-verde"  onclick="syncBidireccional()"   id="btn-sync">🔄 SYNC BIDIRECCIONAL (mezclar ambos)</button>
         </div>
-
-        <!-- Log de operaciones -->
         <div class="cloud-panel">
             <div class="card-title">📋 Log de operaciones</div>
             <div class="sync-log" id="sync-log">
-                <div class="log-warn">» Sistema Poseidon's Seal v2.0 — MyCloud Sync listo</div>
+                <div class="log-warn">» Sistema Poseidon's Seal v2.0.1 — MyCloud Sync listo</div>
                 <div class="log-warn">» Configura la IP de tu WD MyCloud y presiona Verificar</div>
             </div>
             <button class="btn btn-gris" style="font-size:11px;padding:8px;" onclick="limpiarLog()">🗑 Limpiar log</button>
         </div>
-
-        <!-- Info técnica -->
         <div class="cloud-panel">
             <div class="card-title">ℹ️ Cómo funciona</div>
             <div style="font-size:12px;color:#555;line-height:1.7;">
@@ -540,7 +483,7 @@
 
 </div><!-- /app -->
 
-<!-- ─── FASE 2: OVERLAY ESCÁNER QR ────────────────── -->
+<!-- OVERLAY ESCÁNER QR -->
 <div class="scanner-overlay" id="scanner-overlay">
     <div class="scanner-header">
         <img src="icono.png" alt="AGA">
@@ -551,7 +494,6 @@
     </div>
     <div id="scanner-viewport">
         <div id="reader"></div>
-        <!-- Marco animado de escaneo -->
         <div class="scan-frame">
             <div class="scan-box">
                 <div class="scan-corner-tr"></div>
@@ -559,7 +501,6 @@
                 <div class="scan-line"></div>
             </div>
         </div>
-        <!-- Caja de resultado -->
         <div class="scanner-result-box" id="scanner-result">
             <div class="sr-icon">✅</div>
             <div class="sr-folio" id="sr-folio-text"></div>
@@ -576,7 +517,7 @@
     </div>
 </div>
 
-<!-- ─── MODAL ──────────────────────────────────── -->
+<!-- MODAL -->
 <div class="modal-overlay" id="modal-confirm">
     <div class="modal-box">
         <div class="m-icon"   id="m-icon"></div>
@@ -587,11 +528,9 @@
     </div>
 </div>
 
-<!-- ─── ÁREA DE IMPRESIÓN ──────────────────────── -->
+<!-- ÁREA DE IMPRESIÓN -->
 <div id="print-area">
     <div style="font-family:Arial,sans-serif;font-size:11px;color:#000;max-width:680px;">
-
-        <!-- Encabezado -->
         <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">
             <tr>
                 <td style="width:55px;padding-right:10px;vertical-align:middle;">
@@ -609,11 +548,7 @@
                 </td>
             </tr>
         </table>
-
-        <!-- Status -->
         <div id="p-status" class="print-status" style="text-align:center;font-weight:bold;padding:7px;margin-bottom:10px;border-radius:5px;font-size:11px;text-transform:uppercase;letter-spacing:1px;"></div>
-
-        <!-- Datos -->
         <table style="width:100%;border-collapse:collapse;margin-bottom:10px;border:1px solid #ccc;">
             <tr>
                 <td style="padding:4px 8px;background:#f0f0f0;font-weight:bold;color:#555;font-size:9px;text-transform:uppercase;width:18%;">Entrega</td>
@@ -636,8 +571,6 @@
                 <td style="padding:4px 8px;font-size:10px;" id="p-obs" colspan="3"></td>
             </tr>
         </table>
-
-        <!-- Tabla ítems -->
         <table style="width:100%;border-collapse:collapse;margin-bottom:18px;">
             <thead>
                 <tr>
@@ -649,8 +582,6 @@
             </thead>
             <tbody id="p-items-tbody"></tbody>
         </table>
-
-        <!-- Firmas + QR -->
         <table style="width:100%;border-collapse:collapse;">
             <tr>
                 <td style="width:36%;text-align:center;padding:0 8px;font-size:10px;vertical-align:bottom;">
@@ -663,10 +594,7 @@
                     <div id="p-qr-container" style="display:inline-block;"></div>
                     <div style="font-size:8px;color:#555;margin-top:4px;font-weight:bold;">Escanear para identificar</div>
                     <div id="p-qr-url" style="font-size:7px;color:#666;word-break:break-all;margin-top:2px;font-family:Courier New,monospace;"></div>
-                    <!-- Proceso en caso de pérdida del papel -->
-                    <div style="font-size:6px;color:#aaa;margin-top:3px;border-top:1px dashed #ddd;padding-top:2px;">
-                        En caso de pérdida: contactar al responsable del folio indicado
-                    </div>
+                    <div style="font-size:6px;color:#aaa;margin-top:3px;border-top:1px dashed #ddd;padding-top:2px;">En caso de pérdida: contactar al responsable del folio indicado</div>
                 </td>
                 <td style="width:36%;text-align:center;padding:0 8px;font-size:10px;vertical-align:bottom;">
                     <img id="p-sig-recibe" src="" style="height:48px;display:block;margin:0 auto 4px;max-width:170px;">
@@ -676,24 +604,19 @@
                 </td>
             </tr>
         </table>
-
         <div style="margin-top:12px;padding-top:6px;border-top:1px dashed #ccc;font-size:7px;color:#bbb;text-align:center;">
-            Sistema Poseidon's Seal · Academia de Guerra Aérea · Fuerza Aérea de Chile · Documento generado digitalmente
+            Sistema Poseidon's Seal · Academia de Guerra Aérea · Fuerza Aérea de Chile · Documento generado digitalmente · v2.0.1
         </div>
     </div>
 </div>
 
-<!-- QR temporal (para generación) -->
 <div id="qr-temp" style="position:absolute;left:-9999px;top:-9999px;width:80px;height:80px;"></div>
-
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
 // ════════════════════════════════════════════════════════════════════════
 // SISTEMA POSEIDON'S SEAL — Academia de Guerra Aérea — FACH
-// Versión 2.0.0 · Fase 1 + Fase 2 + Fase 3
-// Repositorio: https://github.com/vgarcesb-cpu/aga-vale
+// Versión 2.0.1 · Hotfix sintaxis + IDB guards + canvas edición
 // ════════════════════════════════════════════════════════════════════════
 
 const QR_BASE_URL = "https://vgarcesb-cpu.github.io/Poseidon-s-Seal/";
@@ -709,7 +632,7 @@ let folio         = "";
 let modoEdicion   = false;
 let filtroActual  = "todos";
 
-// ── INDEXED DB ─────────────────────────────────────────────────────────
+// ── INDEXED DB ──────────────────────────────────────────────────────────
 const dbReq = indexedDB.open(DB_NAME, 1);
 
 dbReq.onupgradeneeded = (e) => {
@@ -724,9 +647,8 @@ dbReq.onupgradeneeded = (e) => {
 
 dbReq.onsuccess = (e) => {
     db = e.target.result;
-    // FIX: leer parámetro ?folio= del QR
-    const params      = new URLSearchParams(window.location.search);
-    const folioParam  = params.get("folio");
+    const params     = new URLSearchParams(window.location.search);
+    const folioParam = params.get("folio");
     if (folioParam) {
         cargarValePorQR(folioParam);
     } else {
@@ -734,23 +656,20 @@ dbReq.onsuccess = (e) => {
     }
 };
 
-// FIX-001 ✅ Sin onerror, IDB falla silenciosamente en Android modo privado
-// o con almacenamiento lleno — la app quedaba muerta sin aviso
+// FIX-001: onerror IDB — falla silenciosa en Android modo privado o storage lleno
 dbReq.onerror = () => {
-    mostrarToast("⚠️ Error al abrir base de datos. Verifica permisos.");
+    mostrarToast("⚠️ Error al abrir base de datos. Verifica permisos del navegador.");
 };
 
-// ── CANVAS ─────────────────────────────────────────────────────────────
-// FIX-004 ✅ Lee dimensiones del contenedor padre (sig-wrap), no del canvas
-// FIX-005 ✅ setTimeout 150ms — S25 necesita que el DOM renderice antes de medir
+// ── CANVAS ──────────────────────────────────────────────────────────────
+// FIX-004: mide desde sig-wrap (padre), no del canvas
+// FIX-005: timeout 150ms para que S25 renderice el DOM antes de medir
 function initCanvas(canvasId) {
     const sc   = document.getElementById(canvasId);
     const wrap = sc ? sc.parentElement : null;
     if (!sc || !wrap) return;
-    // FIX-004: medir padre para dimensiones reales en S25
     const w = wrap.offsetWidth  || 300;
     const h = wrap.offsetHeight || 130;
-    // Clonar para remover event listeners anteriores
     const clone = sc.cloneNode(false);
     clone.width  = w;
     clone.height = h;
@@ -773,21 +692,46 @@ function initCanvas(canvasId) {
     clone.addEventListener("touchstart", (e) => { e.preventDefault(); drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); }, { passive: false });
     clone.addEventListener("touchmove",  (e) => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }, { passive: false });
     clone.addEventListener("touchend",   () => drawing = false);
+    return clone; // devuelve el clone para poder dibujar encima si es necesario
 }
 
-// FIX-010 ✅ Resize al rotar pantalla S25 — canvas queda con tamaño incorrecto sin esto
+// FIX-010: resize al rotar S25 — canvas queda con tamaño incorrecto sin esto
 window.addEventListener("resize", () => {
     setTimeout(() => {
         if (pasoActual === 3) {
-            initCanvas("sig-entrega");
-            initCanvas("sig-recibe");
+            redibujarFirmasEnCanvas();
         }
     }, 200);
 });
 
-function limpiarFirma(canvasId) {
+// HOT-004: redibujar firmas guardadas en canvas (modo edición + resize)
+function redibujarFirmasEnCanvas() {
+    initCanvas("sig-entrega");
+    initCanvas("sig-recibe");
+    if (sigEntregaURL) {
+        const img = new Image();
+        img.onload = () => {
+            const sc = document.getElementById("sig-entrega");
+            if (sc) sc.getContext("2d").drawImage(img, 0, 0, sc.width, sc.height);
+        };
+        img.src = sigEntregaURL;
+    }
+    if (sigRecibeURL) {
+        const img = new Image();
+        img.onload = () => {
+            const sc = document.getElementById("sig-recibe");
+            if (sc) sc.getContext("2d").drawImage(img, 0, 0, sc.width, sc.height);
+        };
+        img.src = sigRecibeURL;
+    }
+}
+
+// HOT-004: borrar firma limpia también la URL guardada para ese canal
+function limpiarFirmaCanvas(canvasId, canal) {
     const sc = document.getElementById(canvasId);
     if (sc) sc.getContext("2d").clearRect(0, 0, sc.width, sc.height);
+    if (canal === "entrega") sigEntregaURL = "";
+    if (canal === "recibe")  sigRecibeURL  = "";
 }
 
 function capturarFirma(canvasId) {
@@ -796,10 +740,10 @@ function capturarFirma(canvasId) {
     const tmp = document.createElement("canvas");
     tmp.width  = sc.width;
     tmp.height = sc.height;
-    const ctx = tmp.getContext("2d");
+    const ctx  = tmp.getContext("2d");
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, tmp.width, tmp.height);
-    // FIX-006 ✅ drawImage con dimensiones explícitas — sin esto la firma queda en blanco en S25
+    // FIX-006: drawImage con dimensiones explícitas
     ctx.drawImage(sc, 0, 0, tmp.width, tmp.height);
     return tmp.toDataURL("image/jpeg", 0.65);
 }
@@ -862,10 +806,9 @@ function irPaso(dir) {
     const btnSig = document.getElementById("btn-siguiente");
     const navBar = document.getElementById("nav-bar-pasos");
     if (pasoActual === 3) {
-        // FIX-005 ✅ 150ms para que el DOM S25 renderice antes de medir canvas
+        // FIX-005 + HOT-004: 150ms → DOM renderizado → init canvas → redibujar firmas guardadas
         setTimeout(() => {
-            initCanvas("sig-entrega");
-            initCanvas("sig-recibe");
+            redibujarFirmasEnCanvas();
         }, 150);
         document.getElementById("nombre-entrega-firma").textContent = document.getElementById("entrega").value || "";
         document.getElementById("nombre-recibe-firma").textContent  = document.getElementById("recibe").value  || "";
@@ -880,7 +823,7 @@ function irPaso(dir) {
     }
 }
 
-// FIX-009 ✅ Validación completa por paso
+// HOT-005: validarPaso acepta firma guardada en URL (modo edición)
 function validarPaso() {
     if (pasoActual === 1) {
         if (!document.getElementById("entrega").value.trim()) { mostrarToast("⚠️ Ingresa quien entrega"); return false; }
@@ -889,23 +832,23 @@ function validarPaso() {
     if (pasoActual === 2) {
         if (!items.some(i => i.desc.trim())) { mostrarToast("⚠️ Agrega al menos un ítem con descripción"); return false; }
     }
-    // CAMBIO 1: Firmas OBLIGATORIAS — ambas deben estar firmadas para avanzar al resumen
     if (pasoActual === 3) {
-        const scE = document.getElementById("sig-entrega");
-        const scR = document.getElementById("sig-recibe");
-        const firmaVacia = (sc) => {
+        // HOT-005: si hay URL guardada (modo edición), la firma ya existe → no bloquear
+        const firmaVacia = (canvasId, urlGuardada) => {
+            if (urlGuardada) return false; // firma en DB → válida
+            const sc = document.getElementById(canvasId);
             if (!sc || sc.width === 0) return true;
             const datos = sc.getContext("2d").getImageData(0, 0, sc.width, sc.height).data;
             for (let i = 3; i < datos.length; i += 4) { if (datos[i] > 10) return false; }
             return true;
         };
-        if (firmaVacia(scE)) { mostrarToast("⚠️ La firma de quien ENTREGA es obligatoria"); return false; }
-        if (firmaVacia(scR)) { mostrarToast("⚠️ La firma de quien RECIBE es obligatoria");  return false; }
+        if (firmaVacia("sig-entrega", sigEntregaURL)) { mostrarToast("⚠️ La firma de quien ENTREGA es obligatoria"); return false; }
+        if (firmaVacia("sig-recibe",  sigRecibeURL))  { mostrarToast("⚠️ La firma de quien RECIBE es obligatoria");  return false; }
     }
     return true;
 }
 
-// ── RESUMEN ─────────────────────────────────────────────────────────────
+// ── RESUMEN ──────────────────────────────────────────────────────────────
 function actualizarResumen() {
     const nItems = items.filter(i => i.desc.trim()).length;
     document.getElementById("r-folio").textContent   = folio;
@@ -917,7 +860,7 @@ function actualizarResumen() {
 }
 
 function setStatusUI(estado) {
-    const sb = document.getElementById("status-form");
+    const sb  = document.getElementById("status-form");
     const mapa = {
         emision:    { cls: "s-emision",    txt: "ESTADO: EN EMISIÓN" },
         custodia:   { cls: "s-custodia",   txt: "ESTADO: EN CUSTODIA" },
@@ -936,27 +879,17 @@ function setStatusUI(estado) {
     const btnVO = document.getElementById("btn-volver-emision");
     const btnN  = document.getElementById("btn-nuevo");
 
-    // CAMBIO 2: EN EMISIÓN → solo Guardar + Volver Atrás
     btnG.style.display  = estado === "emision"    ? "block" : "none";
     btnVO.style.display = estado === "emision"    ? "block" : "none";
-
-    // EN CUSTODIA → Imprimir + Registrar Devolución + WhatsApp
     btnI.style.display  = estado !== "emision"    ? "block" : "none";
     btnD.style.display  = estado === "custodia"   ? "block" : "none";
-
-    // EN DEVOLUCIÓN → Imprimir + Cerrar Vale + WhatsApp + Nuevo Vale
     btnC.style.display  = estado === "devolucion" ? "block" : "none";
-
-    // WhatsApp visible en custodia, devolución y cerrado
     btnW.style.display  = estado !== "emision"    ? "block" : "none";
-
-    // CAMBIO 5: Nuevo Vale solo en devolución y cerrado
     btnN.style.display  = (estado === "devolucion" || estado === "cerrado") ? "block" : "none";
 }
 
-// ── GUARDAR ─────────────────────────────────────────────────────────────
+// ── GUARDAR ──────────────────────────────────────────────────────────────
 function guardarVale() {
-    // FIX-002 ✅ guard !db — en S25 IDB puede tardar más en abrirse que en Mac
     if (!db) { mostrarToast("⚠️ Base de datos no lista, intenta de nuevo"); return; }
     const entrega = document.getElementById("entrega").value.trim();
     const recibe  = document.getElementById("recibe").value.trim();
@@ -984,23 +917,22 @@ function guardarVale() {
     tx.oncomplete = () => {
         modoEdicion = true;
         setStatusUI("custodia");
-        // CAMBIO 3: Modal custodia → "BMI Calidad de Préstamo"
         mostrarModal("📋", "Vale Registrado", "BMI Calidad de Préstamo — Bien en custodia.", vale, () => imprimirVale());
         setTimeout(() => intentarSyncAutoMyCloud(), 1200);
     };
+    // HOT-003: tx.onerror en guardar
+    tx.onerror = (e) => mostrarToast("⚠️ Error al guardar: " + e.target.error);
 }
 
 // ── REGISTRAR DEVOLUCIÓN ─────────────────────────────────────────────────
 function registrarDevolucion() {
-    // FIX-002 ✅ guard !db
     if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
     const tx    = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
     const req   = store.get(folio);
     req.onsuccess = () => {
         const data = req.result;
-        // FIX-003 ✅ null-check — si el registro fue borrado o IDB corrompida,
-        // data sería undefined y data.estado crashea con TypeError
+        // FIX-003: null-check
         if (!data) { mostrarToast("⚠️ Registro no encontrado en base de datos"); return; }
         data.estado = "devolucion";
         data.historial.push({ fecha: new Date().toLocaleString("es-CL"), accion: "Devolución iniciada" });
@@ -1010,38 +942,40 @@ function registrarDevolucion() {
             mostrarModal("↩️", "Devolución Registrada", "El proceso de devolución ha comenzado.", data, () => imprimirVale());
         };
     };
+    // HOT-003: tx.onerror en devolución
+    tx.onerror = (e) => mostrarToast("⚠️ Error al registrar devolución: " + e.target.error);
 }
 
 // ── CERRAR VALE ──────────────────────────────────────────────────────────
 function cerrarVale() {
-    // FIX-002 ✅ guard !db
     if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
     const tx    = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
     const req   = store.get(folio);
     req.onsuccess = () => {
         const data = req.result;
-        // FIX-003 ✅ null-check
+        // FIX-003: null-check
         if (!data) { mostrarToast("⚠️ Registro no encontrado en base de datos"); return; }
-        data.estado = "cerrado";
+        data.estado      = "cerrado";
         data.fechaCierre = new Date().toLocaleString("es-CL");
         data.historial.push({ fecha: new Date().toLocaleString("es-CL"), accion: "Vale cerrado — bien devuelto y verificado" });
         store.put(data);
         tx.oncomplete = () => {
             setStatusUI("cerrado");
-            // CAMBIO 4: Modal cerrado → "BMI Fue Devuelto, Vale Archivado"
             mostrarModal("✅", "Vale Cerrado", "BMI fue devuelto — Vale archivado.", data, () => imprimirVale());
         };
     };
+    // HOT-003: tx.onerror en cierre
+    tx.onerror = (e) => mostrarToast("⚠️ Error al cerrar vale: " + e.target.error);
 }
 
 // ── IMPRIMIR / PDF ───────────────────────────────────────────────────────
+// HOT-001: const sb declarada UNA SOLA VEZ en el scope de la función
 function imprimirVale() {
-    // QR = URL pública con folio → cualquier celular escanea y abre el registro
-    // Sin app instalada → abre navegador → carga la app web con el vale
-    const sb          = document.getElementById("status-form");
+    const sb          = document.getElementById("status-form"); // única declaración
     const estadoTexto = sb.textContent.replace("ESTADO: ", "").trim();
     const qrUrl       = QR_BASE_URL + "?folio=" + encodeURIComponent(folio);
+
     document.getElementById("p-folio").textContent          = folio;
     document.getElementById("p-fecha").textContent          = document.getElementById("fecha-input").value;
     document.getElementById("p-entrega-nombre").textContent = document.getElementById("entrega").value;
@@ -1050,21 +984,23 @@ function imprimirVale() {
     document.getElementById("p-recibe-unidad").textContent  = document.getElementById("unidad-recibe").value;
     document.getElementById("p-firma-entrega").textContent  = document.getElementById("entrega").value;
     document.getElementById("p-firma-recibe").textContent   = document.getElementById("recibe").value;
+
     const lugar = document.getElementById("lugar").value;
     const obs   = document.getElementById("obs").value;
     document.getElementById("p-lugar-row").style.display = lugar ? "" : "none";
     document.getElementById("p-obs-row").style.display   = obs   ? "" : "none";
     document.getElementById("p-lugar").textContent = lugar;
     document.getElementById("p-obs").textContent   = obs;
-    // Status en PDF
-    const sb = document.getElementById("status-form");
+
+    // HOT-001: sb ya existe arriba — solo declarar ps
     const ps = document.getElementById("p-status");
     ps.textContent = sb.textContent;
-    const colorMap = { "s-custodia": "#c0392b", "s-devolucion": "#d4680e", "s-cerrado": "#1a9e5c", "s-emision": "#f0c30e" };
-    const textMap  = { "s-custodia": "#fff",     "s-devolucion": "#fff",    "s-cerrado": "#fff",    "s-emision": "#000" };
+    const colorMap = { "s-custodia":"#c0392b","s-devolucion":"#d4680e","s-cerrado":"#1a9e5c","s-emision":"#f0c30e" };
+    const textMap  = { "s-custodia":"#fff",   "s-devolucion":"#fff",   "s-cerrado":"#fff",   "s-emision":"#000" };
     const cls = Array.from(sb.classList).find(c => c.startsWith("s-")) || "s-emision";
-    ps.style.backgroundColor = colorMap[cls]  || "#f0c30e";
-    ps.style.color           = textMap[cls]   || "#000";
+    ps.style.backgroundColor = colorMap[cls] || "#f0c30e";
+    ps.style.color           = textMap[cls]  || "#000";
+
     // Tabla ítems
     const tbody = document.getElementById("p-items-tbody");
     tbody.innerHTML = "";
@@ -1077,10 +1013,12 @@ function imprimirVale() {
             <td style="border:1px solid #ccc;padding:5px;text-align:center;font-size:10px;">${it.un}</td>`;
         tbody.appendChild(tr);
     });
+
     // Firmas en PDF
     if (sigEntregaURL) document.getElementById("p-sig-entrega").src = sigEntregaURL;
     if (sigRecibeURL)  document.getElementById("p-sig-recibe").src  = sigRecibeURL;
-    // QR en PDF — URL pública → cualquier celular abre el registro en el navegador
+
+    // QR en PDF
     const qrCont = document.getElementById("p-qr-container");
     qrCont.innerHTML = "";
     document.getElementById("p-qr-url").textContent = folio + " · " + estadoTexto;
@@ -1099,32 +1037,36 @@ function imprimirVale() {
     } catch(e) {
         qrDiv.innerHTML = `<div style="font-size:7px;text-align:center;word-break:break-all;padding:4px;">${folio}</div>`;
     }
+
+    // PDF: setTimeout 700ms — S25 necesita tiempo para renderizar QR antes de print
     setTimeout(() => window.print(), 700);
 }
 
 // ── WHATSAPP ─────────────────────────────────────────────────────────────
 function enviarWhatsApp() {
-    const qrUrl   = QR_BASE_URL + "?folio=" + encodeURIComponent(folio);
-    const estado  = document.getElementById("status-form").textContent;
-    const iList   = items.filter(i => i.desc).map((i, idx) => `  ${idx+1}. ${i.cant} ${i.un} — ${i.desc}`).join("%0A");
-    const msg     = `*SISTEMA POSEIDON'S SEAL*%0A*Academia de Guerra Aérea · FACH*%0A%0A` +
-                    `*Folio:* ${folio}%0A*Fecha:* ${document.getElementById("fecha-input").value}%0A*${estado}*%0A%0A` +
-                    `*Entrega:* ${document.getElementById("entrega").value}%0A` +
-                    `*Recibe:* ${document.getElementById("recibe").value}%0A` +
-                    `*Lugar:* ${document.getElementById("lugar").value || "—"}%0A%0A` +
-                    `*Ítems:*%0A${iList}%0A%0A🔗 _Ver registro:_ ${qrUrl}`;
+    const qrUrl  = QR_BASE_URL + "?folio=" + encodeURIComponent(folio);
+    const estado = document.getElementById("status-form").textContent;
+    const iList  = items.filter(i => i.desc).map((i, idx) => `  ${idx+1}. ${i.cant} ${i.un} — ${i.desc}`).join("%0A");
+    const msg    = `*SISTEMA POSEIDON'S SEAL*%0A*Academia de Guerra Aérea · FACH*%0A%0A` +
+                   `*Folio:* ${folio}%0A*Fecha:* ${document.getElementById("fecha-input").value}%0A*${estado}*%0A%0A` +
+                   `*Entrega:* ${document.getElementById("entrega").value}%0A` +
+                   `*Recibe:* ${document.getElementById("recibe").value}%0A` +
+                   `*Lugar:* ${document.getElementById("lugar").value || "—"}%0A%0A` +
+                   `*Ítems:*%0A${iList}%0A%0A🔗 _Ver registro:_ ${qrUrl}`;
     window.open(`https://wa.me/?text=${msg}`, "_blank");
 }
 
 // ── HISTORIAL ─────────────────────────────────────────────────────────────
 function cargarHistorial() {
-    // FIX-002 ✅ guard !db
     if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
-    db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll().onsuccess = (e) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    tx.objectStore(STORE_NAME).getAll().onsuccess = (e) => {
         let rs = (e.target.result || []).filter(r => filtroActual === "todos" || r.estado === filtroActual);
         rs.sort((a, b) => (b.fechaTs || 0) - (a.fechaTs || 0));
         renderHistorial(rs);
     };
+    // HOT-003: tx.onerror en historial
+    tx.onerror = (e) => mostrarToast("⚠️ Error al cargar historial: " + e.target.error);
 }
 
 function renderHistorial(rs) {
@@ -1160,12 +1102,11 @@ function filtrarHistorial(f) {
 
 // ── BUSCAR ───────────────────────────────────────────────────────────────
 function buscarVale() {
-    // FIX-002 ✅ guard !db
     if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
-    // FIX-008 ✅ validar campo vacío antes de consultar IDB
     const q = document.getElementById("input-busqueda").value.trim().toLowerCase();
     if (!q) { mostrarToast("⚠️ Ingresa un folio o nombre"); return; }
-    db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll().onsuccess = (e) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    tx.objectStore(STORE_NAME).getAll().onsuccess = (e) => {
         const rs = (e.target.result||[]).filter(r =>
             r.id.toLowerCase().includes(q) ||
             (r.entrega||"").toLowerCase().includes(q) ||
@@ -1193,6 +1134,8 @@ function buscarVale() {
             div.appendChild(d);
         });
     };
+    // HOT-003: tx.onerror en buscar
+    tx.onerror = (e) => mostrarToast("⚠️ Error en búsqueda: " + e.target.error);
 }
 
 // ── CARGAR VALE EN FORMULARIO ─────────────────────────────────────────────
@@ -1220,7 +1163,6 @@ function cargarValeEnFormulario(r) {
 
 // ── CARGAR POR QR ─────────────────────────────────────────────────────────
 function cargarValePorQR(folioParam) {
-    // Si IDB no está lista aún, reintenta
     if (!db) { setTimeout(() => cargarValePorQR(folioParam), 300); return; }
     const tx    = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
@@ -1234,9 +1176,12 @@ function cargarValePorQR(folioParam) {
             mostrarToast("⚠️ Folio no encontrado — usa Importar DB para sincronizar");
         }
     };
+    // HOT-003: onerror en cargar por QR
+    tx.onerror = (e) => { nuevoVale(); mostrarToast("⚠️ Error IDB al cargar QR: " + e.target.error); };
 }
 
 // ── IR A PASO DIRECTO ─────────────────────────────────────────────────────
+// HOT-002: añade initCanvas + redibujado de firmas cuando paso === 3
 function irAPasoDirecto(paso) {
     document.querySelectorAll(".step-panel").forEach(p => p.classList.remove("activo"));
     document.querySelectorAll(".step-item").forEach(s => s.classList.remove("activo", "completo"));
@@ -1246,10 +1191,18 @@ function irAPasoDirecto(paso) {
     document.getElementById("si-"    + paso).classList.add("activo");
     document.getElementById("nav-bar-pasos").style.display = paso === 4 ? "none" : "flex";
     document.getElementById("btn-atras").disabled = (paso === 1);
+    // HOT-002 + FIX-005: canvas requiere 150ms igual que en irPaso()
+    if (paso === 3) {
+        document.getElementById("nombre-entrega-firma").textContent = document.getElementById("entrega").value || "";
+        document.getElementById("nombre-recibe-firma").textContent  = document.getElementById("recibe").value  || "";
+        setTimeout(() => {
+            redibujarFirmasEnCanvas();
+        }, 150);
+    }
 }
 
 // ── NUEVO VALE ────────────────────────────────────────────────────────────
-// FIX-008 ✅ Limpia TODOS los campos incluyendo busquedaId y folio-show
+// FIX-008: limpia TODOS los campos
 function nuevoVale() {
     folio       = "AGA-" + new Date().getFullYear() + "-" + (Math.floor(Math.random() * 9000) + 1000);
     modoEdicion = false;
@@ -1259,7 +1212,7 @@ function nuevoVale() {
     ["entrega","unidad-entrega","recibe","unidad-recibe","lugar","obs"].forEach(id => {
         document.getElementById(id).value = "";
     });
-    document.getElementById("input-busqueda").value   = "";
+    document.getElementById("input-busqueda").value         = "";
     document.getElementById("resultado-busqueda").innerHTML = "";
     items         = [];
     sigEntregaURL = "";
@@ -1267,17 +1220,17 @@ function nuevoVale() {
     agregarItem();
     setStatusUI("emision");
     irAPasoDirecto(1);
-    document.getElementById("nav-bar-pasos").style.display = "flex";
-    document.getElementById("btn-atras").disabled    = true;
-    document.getElementById("btn-siguiente").textContent = "Siguiente →";
-    document.getElementById("btn-siguiente").className   = "btn-nav btn-siguiente";
+    document.getElementById("nav-bar-pasos").style.display   = "flex";
+    document.getElementById("btn-atras").disabled            = true;
+    document.getElementById("btn-siguiente").textContent     = "Siguiente →";
+    document.getElementById("btn-siguiente").className       = "btn-nav btn-siguiente";
 }
 
 // ── EXPORT / IMPORT ───────────────────────────────────────────────────────
 function exportarJSON() {
-    // FIX-002 ✅ guard !db
     if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
-    db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll().onsuccess = (e) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    tx.objectStore(STORE_NAME).getAll().onsuccess = (e) => {
         const data = e.target.result || [];
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const a    = document.createElement("a");
@@ -1286,16 +1239,17 @@ function exportarJSON() {
         a.click();
         mostrarToast("📤 Exportados " + data.length + " registros");
     };
+    // HOT-003: tx.onerror en exportar
+    tx.onerror = (e) => mostrarToast("⚠️ Error al exportar: " + e.target.error);
 }
 
 function importarJSON(event) {
     const file = event.target.files[0];
     if (!file) return;
-    // FIX-002 ✅ guard !db
     if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
     const reader = new FileReader();
     reader.onload = (e) => {
-        // FIX-007 ✅ try/catch — sin esto un JSON corrupto congela la app
+        // FIX-007: try/catch — JSON corrupto no congela la app
         try {
             const data = JSON.parse(e.target.result);
             if (!Array.isArray(data)) { mostrarToast("⚠️ Archivo inválido — no es un backup AGA"); return; }
@@ -1305,6 +1259,8 @@ function importarJSON(event) {
                 mostrarToast("📥 Importados " + data.length + " registros");
                 cargarHistorial();
             };
+            // HOT-003: tx.onerror en importar
+            tx.onerror = (e) => mostrarToast("⚠️ Error al importar: " + e.target.error);
         } catch(err) {
             mostrarToast("⚠️ Archivo JSON inválido o corrupto");
         }
@@ -1319,7 +1275,7 @@ function cambiarTab(tab) {
     ["form","history","buscar","sync"].forEach(s => {
         document.getElementById("screen-" + s).style.display = "none";
     });
-    document.getElementById("tab-"    + tab).classList.add("activo");
+    document.getElementById("tab-" + tab).classList.add("activo");
     if (tab === "form") {
         document.getElementById("screen-form").style.display = "flex";
     } else if (tab === "history") {
@@ -1327,7 +1283,6 @@ function cambiarTab(tab) {
         cargarHistorial();
     } else if (tab === "sync") {
         document.getElementById("screen-sync").style.display = "block";
-        // Cargar config guardada al abrir tab
         const cfg = localStorage.getItem(MYCLOUD_DB_KEY);
         if (cfg) {
             try {
@@ -1370,36 +1325,27 @@ function mostrarToast(msg) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// FASE 2 — ESCÁNER QR CON CÁMARA S25
-// Librería: Html5-QRCode v2.3.8 (unpkg CDN)
+// ESCÁNER QR — Html5-QRCode v2.3.8
 // ════════════════════════════════════════════════════════════════════════
 
-let html5QrCode   = null;
+let html5QrCode    = null;
 let folioEscaneado = "";
 
 function abrirEscaner() {
     document.getElementById("scanner-overlay").classList.add("show");
     document.getElementById("scanner-result").classList.remove("show");
     folioEscaneado = "";
-
-    // FIX-002 adaptado: verificar que la librería cargó
     if (typeof Html5Qrcode === "undefined") {
         mostrarToast("⚠️ Librería QR no disponible — necesitas internet");
         cerrarEscaner();
         return;
     }
-
     html5QrCode = new Html5Qrcode("reader");
-
-    // FIX-005 adaptado: pequeño delay antes de iniciar cámara en S25
+    // FIX-005 adaptado: delay antes de iniciar cámara en S25
     setTimeout(() => {
         html5QrCode.start(
-            { facingMode: "environment" },  // cámara trasera S25
-            {
-                fps: 10,
-                qrbox: { width: 220, height: 220 },
-                aspectRatio: 1.0
-            },
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
             (decodedText) => onQRDetectado(decodedText),
             (err) => { /* errores de frame, ignorar */ }
         ).catch(err => {
@@ -1410,24 +1356,14 @@ function abrirEscaner() {
 }
 
 function onQRDetectado(texto) {
-    // Extraer folio del QR — acepta URL completa o folio directo
     let folioDet = texto;
     try {
-        const url    = new URL(texto);
-        const param  = url.searchParams.get("folio");
+        const url   = new URL(texto);
+        const param = url.searchParams.get("folio");
         if (param) folioDet = param;
-    } catch(e) {
-        // No es URL, usar el texto directo como folio
-    }
-
+    } catch(e) {}
     folioEscaneado = folioDet;
-
-    // Pausar escaneo al detectar
-    if (html5QrCode) {
-        html5QrCode.pause(true);
-    }
-
-    // Mostrar resultado
+    if (html5QrCode) html5QrCode.pause(true);
     document.getElementById("sr-folio-text").textContent = folioEscaneado;
     document.getElementById("sr-sub-text").textContent   =
         folioEscaneado.startsWith("AGA-")
@@ -1438,18 +1374,14 @@ function onQRDetectado(texto) {
 
 function confirmarEscaneo() {
     cerrarEscaner();
-    // FIX-002: guard !db
     if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
-
     const tx    = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
     const req   = store.get(folioEscaneado);
-
     req.onsuccess = () => {
         // FIX-003: null-check
         if (!req.result) {
             mostrarToast("⚠️ Folio no encontrado — ¿Importaste el backup del otro dispositivo?");
-            // Pre-llenar el buscador con el folio escaneado
             cambiarTab("buscar");
             document.getElementById("input-busqueda").value = folioEscaneado;
             return;
@@ -1457,16 +1389,14 @@ function confirmarEscaneo() {
         cargarValeEnFormulario(req.result);
         mostrarToast("📋 Vale cargado: " + folioEscaneado);
     };
-
+    // HOT-003: onerror en confirmar escaneo
     req.onerror = () => mostrarToast("⚠️ Error al buscar en base de datos");
 }
 
 function reanudarEscaner() {
     document.getElementById("scanner-result").classList.remove("show");
     folioEscaneado = "";
-    if (html5QrCode) {
-        html5QrCode.resume();
-    }
+    if (html5QrCode) html5QrCode.resume();
 }
 
 function cerrarEscaner() {
@@ -1475,20 +1405,17 @@ function cerrarEscaner() {
         html5QrCode.stop().catch(() => {});
         html5QrCode = null;
     }
-    // FIX: limpiar el reader para evitar conflictos al reabrir
     const reader = document.getElementById("reader");
     if (reader) reader.innerHTML = "";
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// FASE 3 — SYNC WD MYCLOUD VÍA API REST RED LOCAL
-// El MyCloud expone una API REST en la red local WiFi
-// Solo funciona cuando S25 y MyCloud están en la misma red
+// SYNC WD MYCLOUD — API REST RED LOCAL
 // ════════════════════════════════════════════════════════════════════════
 
-const MYCLOUD_DB_KEY   = "mycloud_config";
-const SYNC_FILE_PATH   = "/api/2.1/rest/files?path=/Public/Poseidon_Seal/";
-const SYNC_FILENAME    = "poseidon_backup.json";
+const MYCLOUD_DB_KEY = "mycloud_config";
+const SYNC_FILE_PATH = "/api/2.1/rest/files?path=/Public/Poseidon_Seal/";
+const SYNC_FILENAME  = "poseidon_backup.json";
 
 // Cargar config guardada al inicio
 (function cargarConfigCloud() {
@@ -1529,7 +1456,6 @@ async function verificarMyCloud() {
             signal: AbortSignal.timeout(4000)
         });
         if (res.ok || res.status === 401) {
-            // 401 = necesita auth pero el servidor responde = está en línea
             setCloudDot("verde", "MyCloud conectado ✓");
             logSync("ok", "✅ WD MyCloud encontrado en la red local");
             mostrarToast("✅ MyCloud conectado");
@@ -1554,17 +1480,14 @@ async function verificarMyCloud() {
 async function syncSubirTodo() {
     const base = getMyCloudURL();
     if (!base) return;
-    // FIX-002: guard !db
-    if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
-
+    if (!db)   { mostrarToast("⚠️ Base de datos no lista"); return; }
     logSync("warn", "⬆️ Iniciando subida al MyCloud...");
     setCloudDot("naranja", "Subiendo...");
-
-    db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll().onsuccess = async (e) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    tx.objectStore(STORE_NAME).getAll().onsuccess = async (e) => {
         const data    = e.target.result || [];
         const payload = JSON.stringify(data, null, 2);
         const blob    = new Blob([payload], { type: "application/json" });
-
         try {
             const url = `${base}${SYNC_FILE_PATH}${SYNC_FILENAME}`;
             const res = await fetch(url, {
@@ -1573,7 +1496,6 @@ async function syncSubirTodo() {
                 headers: { "Content-Type": "application/json" },
                 signal: AbortSignal.timeout(10000)
             });
-
             if (res.ok || res.status === 201) {
                 setCloudDot("verde", "Subida exitosa ✓");
                 logSync("ok", `✅ ${data.length} registros subidos al MyCloud`);
@@ -1589,32 +1511,25 @@ async function syncSubirTodo() {
             mostrarToast("⚠️ Error — usa Exportar DB como alternativa");
         }
     };
+    // HOT-003: tx.onerror en sync subir
+    tx.onerror = (e) => { setCloudDot("rojo","Error IDB"); logSync("err","❌ IDB: "+e.target.error); };
 }
 
 async function syncDescargarTodo() {
     const base = getMyCloudURL();
     if (!base) return;
     if (!db)   { mostrarToast("⚠️ Base de datos no lista"); return; }
-
     logSync("warn", "⬇️ Descargando desde MyCloud...");
     setCloudDot("naranja", "Descargando...");
-
     try {
         const url = `${base}${SYNC_FILE_PATH}${SYNC_FILENAME}`;
         const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) throw new Error("HTTP " + res.status);
-
         const text = await res.text();
         // FIX-007: try/catch en parse
         let data;
-        try {
-            data = JSON.parse(text);
-        } catch(e) {
-            throw new Error("Archivo corrupto en MyCloud");
-        }
-
+        try { data = JSON.parse(text); } catch(e) { throw new Error("Archivo corrupto en MyCloud"); }
         if (!Array.isArray(data)) throw new Error("Formato inválido");
-
         const tx = db.transaction(STORE_NAME, "readwrite");
         data.forEach(item => tx.objectStore(STORE_NAME).put(item));
         tx.oncomplete = () => {
@@ -1623,6 +1538,8 @@ async function syncDescargarTodo() {
             mostrarToast(`✅ ${data.length} registros importados`);
             cargarHistorial();
         };
+        // HOT-003: tx.onerror en sync descargar
+        tx.onerror = (e) => { setCloudDot("rojo","Error IDB"); logSync("err","❌ IDB: "+e.target.error); };
     } catch(err) {
         setCloudDot("rojo", "Error en descarga");
         logSync("err", "❌ Error descargando: " + err.message);
@@ -1634,11 +1551,8 @@ async function syncBidireccional() {
     const base = getMyCloudURL();
     if (!base) return;
     if (!db)   { mostrarToast("⚠️ Base de datos no lista"); return; }
-
     logSync("warn", "🔄 Iniciando sync bidireccional...");
     setCloudDot("naranja", "Sincronizando...");
-
-    // 1. Descargar del MyCloud
     let remoteData = [];
     try {
         const url = `${base}${SYNC_FILE_PATH}${SYNC_FILENAME}`;
@@ -1652,13 +1566,10 @@ async function syncBidireccional() {
     } catch(e) {
         logSync("warn", "⚠️ No hay backup previo en MyCloud — se creará uno nuevo");
     }
-
-    // 2. Obtener datos locales
-    db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll().onsuccess = async (e) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    tx.objectStore(STORE_NAME).getAll().onsuccess = async (e) => {
         const localData = e.target.result || [];
         logSync("ok", `💾 ${localData.length} registros locales en S25`);
-
-        // 3. Mezclar: gana el registro con fechaTs más reciente
         const mapa = new Map();
         [...remoteData, ...localData].forEach(item => {
             const existing = mapa.get(item.id);
@@ -1667,15 +1578,11 @@ async function syncBidireccional() {
             }
         });
         const merged = Array.from(mapa.values());
-        logSync("ok", `🔀 Resultado: ${merged.length} registros únicos (sin duplicados)`);
-
-        // 4. Guardar mezcla en IDB local
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        merged.forEach(item => tx.objectStore(STORE_NAME).put(item));
-        tx.oncomplete = async () => {
+        logSync("ok", `🔀 Resultado: ${merged.length} registros únicos`);
+        const tx2 = db.transaction(STORE_NAME, "readwrite");
+        merged.forEach(item => tx2.objectStore(STORE_NAME).put(item));
+        tx2.oncomplete = async () => {
             logSync("ok", "✅ Base de datos local actualizada");
-
-            // 5. Subir mezcla al MyCloud
             try {
                 const url     = `${base}${SYNC_FILE_PATH}${SYNC_FILENAME}`;
                 const payload = JSON.stringify(merged, null, 2);
@@ -1699,38 +1606,37 @@ async function syncBidireccional() {
             }
             cargarHistorial();
         };
+        // HOT-003: tx2.onerror en sync bidireccional
+        tx2.onerror = (e) => { setCloudDot("rojo","Error IDB merge"); logSync("err","❌ "+e.target.error); };
     };
+    // HOT-003: tx.onerror en lectura local
+    tx.onerror = (e) => { setCloudDot("rojo","Error IDB lectura"); logSync("err","❌ "+e.target.error); };
 }
 
-// ── Helpers de UI para Sync ──────────────────────────────────────────
+// ── Helpers Sync ─────────────────────────────────────────────────────────
 function setCloudDot(color, texto) {
-    const dot = document.getElementById("cloud-dot");
-    dot.className = "cloud-dot " + color;
+    document.getElementById("cloud-dot").className        = "cloud-dot " + color;
     document.getElementById("cloud-status-text").textContent = texto;
 }
-
 function logSync(tipo, msg) {
-    const log  = document.getElementById("sync-log");
-    const div  = document.createElement("div");
-    div.className = "log-" + tipo;
+    const log = document.getElementById("sync-log");
+    const div = document.createElement("div");
+    div.className   = "log-" + tipo;
     div.textContent = "[" + new Date().toLocaleTimeString("es-CL") + "] " + msg;
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
 }
-
 function limpiarLog() {
-    document.getElementById("sync-log").innerHTML =
-        '<div class="log-warn">» Log limpiado</div>';
+    document.getElementById("sync-log").innerHTML = '<div class="log-warn">» Log limpiado</div>';
 }
 
-// ── Sync automático al guardar (si MyCloud está configurado) ─────────
+// ── Auto-sync al guardar ──────────────────────────────────────────────────
 async function intentarSyncAutoMyCloud() {
     const cfg = localStorage.getItem(MYCLOUD_DB_KEY);
     if (!cfg) return;
     try {
         const { ip, puerto } = JSON.parse(cfg);
         if (!ip) return;
-        // Ping rápido para verificar si estamos en red local
         const ping = await fetch(`http://${ip}:${puerto||"8080"}/api/2.1/rest/ping`, {
             signal: AbortSignal.timeout(1500)
         });
@@ -1743,9 +1649,7 @@ async function intentarSyncAutoMyCloud() {
     }
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// SERVICE WORKER (PWA offline) ──────────────────────────────────────────
-// FIX: Sin SW, sin internet en terreno = app no carga
+// ── SERVICE WORKER ────────────────────────────────────────────────────────
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js")
