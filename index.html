@@ -8,27 +8,35 @@
     ╔══════════════════════════════════════════════════════════════════════╗
     ║      SISTEMA POSEIDON'S SEAL — ACADEMIA DE GUERRA AÉREA — FACH      ║
     ║                                                                      ║
-    ║  Versión   : 2.0.1 — Hotfix sintaxis + guards IDB + canvas edición  ║
+    ║  Versión   : 2.1.0 — Fase 1: PDF sin QR + MyCloud Opción A         ║
     ║  Repositorio: vgarcesb-cpu/Poseidon-s-Seal (GitHub Pages público)   ║
     ║  URL QR    : https://vgarcesb-cpu.github.io/Poseidon-s-Seal/?folio= ║
     ║  Plataformas: Mac · Windows · Samsung S25 · PWA offline             ║
     ║                                                                      ║
-    ║  CORRECCIONES v2.0.1 SOBRE v2.0.0:                                  ║
+    ║  CAMBIOS v2.1.0 SOBRE v2.0.1:                                       ║
+    ║  FASE1-001 │ IP WD MyCloud pre-configurada (192.168.100.11)         ║
+    ║  FASE1-002 │ Campo MyCloud.com URL para acceso remoto               ║
+    ║  FASE1-003 │ Botón PDF sin QR para compartir por WhatsApp           ║
+    ║  FASE1-004 │ imprimirValeSinQR() oculta QR en impresión             ║
+    ║  FASE1-005 │ getMyCloudURL() async Opción A: local → remoto         ║
+    ║  FASE1-006 │ guardarConfigCloud() persiste URL remota               ║
+    ║  FASE1-007 │ Carga URL remota al abrir tab sync                     ║
+    ║  FASE1-008 │ await getMyCloudURL() en todas las funciones sync      ║
+    ║                                                                      ║
+    ║  CORRECCIONES HEREDADAS v2.0.1:                                      ║
     ║  HOT-001 │ const sb duplicado en imprimirVale() → SyntaxError fatal ║
     ║  HOT-002 │ irAPasoDirecto() sin initCanvas ni setTimeout 150ms      ║
     ║  HOT-003 │ tx.onerror ausente en 11 operaciones IDB                 ║
     ║  HOT-004 │ firmas no se redibujan al retroceder en modo edición      ║
     ║  HOT-005 │ validarPaso() bloqueaba avance si firma guardada en URL   ║
-    ║                                                                      ║
-    ║  CORRECCIONES HEREDADAS v2.0.0:                                      ║
-    ║  FIX-001 │ onerror en IndexedDB — falla sin aviso en Android        ║
+    ║  FIX-001 │ onerror en IndexedDB                                     ║
     ║  FIX-002 │ guard !db antes de toda operación IDB                    ║
-    ║  FIX-003 │ null-check en registros (devolución/cierre)              ║
-    ║  FIX-004 │ canvas ajuste desde sig-wrap (padre) no del canvas       ║
-    ║  FIX-005 │ setTimeout 150ms DOM S25 antes de medir canvas           ║
+    ║  FIX-003 │ null-check en registros                                  ║
+    ║  FIX-004 │ canvas ajuste desde sig-wrap (padre)                     ║
+    ║  FIX-005 │ setTimeout 150ms antes de medir canvas                   ║
     ║  FIX-006 │ drawImage con dimensiones explícitas                     ║
-    ║  FIX-007 │ try/catch en importarJSON — JSON corrupto/malformado     ║
-    ║  FIX-008 │ todos los campos se limpian en nuevoVale()               ║
+    ║  FIX-007 │ try/catch en importarJSON                                ║
+    ║  FIX-008 │ todos los campos limpios en nuevoVale()                  ║
     ║  FIX-009 │ validación completa de campos obligatorios               ║
     ║  FIX-010 │ resize listener para rotación pantalla S25               ║
     ╚══════════════════════════════════════════════════════════════════════╝
@@ -386,6 +394,7 @@
                 <div style="margin-top:8px;">
                     <button class="btn btn-dorado"  id="btn-guardar"    onclick="guardarVale()">💾 GUARDAR Y REGISTRAR</button>
                     <button class="btn btn-azul"    id="btn-imprimir"   style="display:none" onclick="imprimirVale()">🖨️ IMPRIMIR / PDF</button>
+                    <button class="btn btn-azul"    id="btn-pdf-sin-qr" style="display:none" onclick="imprimirValeSinQR()">📄 PDF SIN QR (terceros)</button>
                     <button class="btn btn-naranja" id="btn-devolucion" style="display:none" onclick="registrarDevolucion()">↩️ REGISTRAR DEVOLUCIÓN</button>
                     <button class="btn btn-verde"   id="btn-cerrar"     style="display:none" onclick="cerrarVale()">✅ CERRAR VALE</button>
                     <button class="btn btn-wa"      id="btn-wa"         style="display:none" onclick="enviarWhatsApp()">📱 ENVIAR POR WHATSAPP</button>
@@ -440,43 +449,51 @@
             <div class="cloud-status">
                 <div class="cloud-dot gris" id="cloud-dot"></div>
                 <div class="cloud-info">
-                    <div class="ci-label">Estado red local</div>
+                    <div class="ci-label">Estado conexión</div>
                     <div class="ci-val" id="cloud-status-text">Sin verificar</div>
                 </div>
                 <button class="btn btn-azul" style="width:auto;padding:8px 14px;font-size:11px;margin:0;" onclick="verificarMyCloud()">Verificar</button>
             </div>
+            <!-- FASE1-001: IP pre-configurada -->
             <div class="campo-group">
-                <label class="campo-label">IP del WD MyCloud (red local)</label>
-                <input type="text" class="campo-input" id="mycloud-ip" placeholder="Ej: 192.168.1.100" value="">
-                <div style="font-size:10px;color:#888;margin-top:3px;">Encuéntrala en: WD My Cloud app → Dispositivo → Info de red</div>
+                <label class="campo-label">IP del WD MyCloud (red local WiFi)</label>
+                <input type="text" class="campo-input" id="mycloud-ip" placeholder="Ej: 192.168.1.100" value="192.168.100.11">
+                <div style="font-size:10px;color:#888;margin-top:3px;">WD My Cloud app → Dispositivo → Info de red</div>
             </div>
             <div class="campo-group">
                 <label class="campo-label">Puerto (default 8080)</label>
                 <input type="text" class="campo-input" id="mycloud-puerto" placeholder="8080" value="8080">
             </div>
+            <!-- FASE1-002: Campo URL remota MyCloud.com -->
+            <div class="campo-group">
+                <label class="campo-label">MyCloud.com URL (fuera de casa 📡)</label>
+                <input type="text" class="campo-input" id="mycloud-remote" placeholder="https://usuario.mycloud.com">
+                <div style="font-size:10px;color:#888;margin-top:3px;">WD My Cloud app → Acceso remoto → URL personal</div>
+            </div>
             <button class="btn btn-azul" onclick="guardarConfigCloud()">💾 Guardar configuración</button>
         </div>
         <div class="cloud-panel">
             <div class="card-title">🔄 Acciones</div>
-            <button class="btn btn-dorado" onclick="syncSubirTodo()"       id="btn-subir">⬆️ SUBIR todos los vales al MyCloud</button>
-            <button class="btn btn-azul"   onclick="syncDescargarTodo()"   id="btn-bajar">⬇️ DESCARGAR vales desde MyCloud</button>
-            <button class="btn btn-verde"  onclick="syncBidireccional()"   id="btn-sync">🔄 SYNC BIDIRECCIONAL (mezclar ambos)</button>
+            <button class="btn btn-dorado" onclick="syncSubirTodo()"     id="btn-subir">⬆️ SUBIR todos los vales al MyCloud</button>
+            <button class="btn btn-azul"   onclick="syncDescargarTodo()" id="btn-bajar">⬇️ DESCARGAR vales desde MyCloud</button>
+            <button class="btn btn-verde"  onclick="syncBidireccional()" id="btn-sync">🔄 SYNC BIDIRECCIONAL (mezclar ambos)</button>
         </div>
         <div class="cloud-panel">
             <div class="card-title">📋 Log de operaciones</div>
             <div class="sync-log" id="sync-log">
-                <div class="log-warn">» Sistema Poseidon's Seal v2.0.1 — MyCloud Sync listo</div>
-                <div class="log-warn">» Configura la IP de tu WD MyCloud y presiona Verificar</div>
+                <div class="log-warn">» Sistema Poseidon's Seal v2.1.0 — MyCloud Opción A listo</div>
+                <div class="log-warn">» Red local (192.168.100.11) → MyCloud.com como fallback</div>
+                <div class="log-warn">» Presiona Verificar para detectar conexión disponible</div>
             </div>
             <button class="btn btn-gris" style="font-size:11px;padding:8px;" onclick="limpiarLog()">🗑 Limpiar log</button>
         </div>
         <div class="cloud-panel">
-            <div class="card-title">ℹ️ Cómo funciona</div>
+            <div class="card-title">ℹ️ Cómo funciona — Opción A</div>
             <div style="font-size:12px;color:#555;line-height:1.7;">
-                <p>📶 <strong>Con WiFi AGA:</strong> Sync automático al guardar un vale.</p>
-                <p>📵 <strong>Sin WiFi:</strong> Los vales se guardan local en S25. Al volver a la red, sync manual.</p>
-                <p>🔐 <strong>Seguridad:</strong> Comunicación solo en red local. Nunca sale a internet.</p>
-                <p>💡 <strong>Tip:</strong> WD MyCloud debe estar encendido y en la misma red WiFi que el S25.</p>
+                <p>📶 <strong>En casa (WiFi):</strong> Conecta directo al WD MyCloud en red local. Más rápido y sin internet.</p>
+                <p>📡 <strong>Fuera de casa:</strong> Usa MyCloud.com como fallback automático. Requiere internet.</p>
+                <p>🔄 <strong>Detección automática:</strong> La app intenta red local primero (2 seg). Si falla, usa MyCloud.com.</p>
+                <p>💾 <strong>Auto-sync:</strong> Al guardar un vale, intenta sincronizar automáticamente si hay conexión.</p>
             </div>
         </div>
     </div>
@@ -605,7 +622,7 @@
             </tr>
         </table>
         <div style="margin-top:12px;padding-top:6px;border-top:1px dashed #ccc;font-size:7px;color:#bbb;text-align:center;">
-            Sistema Poseidon's Seal · Academia de Guerra Aérea · Fuerza Aérea de Chile · Documento generado digitalmente · v2.0.1
+            Sistema Poseidon's Seal · Academia de Guerra Aérea · Fuerza Aérea de Chile · v2.1.0
         </div>
     </div>
 </div>
@@ -615,8 +632,7 @@
 
 <script>
 // ════════════════════════════════════════════════════════════════════════
-// SISTEMA POSEIDON'S SEAL — Academia de Guerra Aérea — FACH
-// Versión 2.0.1 · Hotfix sintaxis + IDB guards + canvas edición
+// SISTEMA POSEIDON'S SEAL v2.1.0
 // ════════════════════════════════════════════════════════════════════════
 
 const QR_BASE_URL = "https://vgarcesb-cpu.github.io/Poseidon-s-Seal/";
@@ -656,14 +672,11 @@ dbReq.onsuccess = (e) => {
     }
 };
 
-// FIX-001: onerror IDB — falla silenciosa en Android modo privado o storage lleno
 dbReq.onerror = () => {
     mostrarToast("⚠️ Error al abrir base de datos. Verifica permisos del navegador.");
 };
 
 // ── CANVAS ──────────────────────────────────────────────────────────────
-// FIX-004: mide desde sig-wrap (padre), no del canvas
-// FIX-005: timeout 150ms para que S25 renderice el DOM antes de medir
 function initCanvas(canvasId) {
     const sc   = document.getElementById(canvasId);
     const wrap = sc ? sc.parentElement : null;
@@ -692,19 +705,21 @@ function initCanvas(canvasId) {
     clone.addEventListener("touchstart", (e) => { e.preventDefault(); drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); }, { passive: false });
     clone.addEventListener("touchmove",  (e) => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }, { passive: false });
     clone.addEventListener("touchend",   () => drawing = false);
-    return clone; // devuelve el clone para poder dibujar encima si es necesario
+    return clone;
 }
 
-// FIX-010: resize al rotar S25 — canvas queda con tamaño incorrecto sin esto
 window.addEventListener("resize", () => {
     setTimeout(() => {
-        if (pasoActual === 3) {
-            redibujarFirmasEnCanvas();
-        }
+        if (pasoActual === 3) redibujarFirmasEnCanvas();
     }, 200);
 });
 
-// HOT-004: redibujar firmas guardadas en canvas (modo edición + resize)
+screen.orientation && screen.orientation.addEventListener("change", () => {
+    setTimeout(() => {
+        if (pasoActual === 3) redibujarFirmasEnCanvas();
+    }, 350);
+});
+
 function redibujarFirmasEnCanvas() {
     initCanvas("sig-entrega");
     initCanvas("sig-recibe");
@@ -726,7 +741,6 @@ function redibujarFirmasEnCanvas() {
     }
 }
 
-// HOT-004: borrar firma limpia también la URL guardada para ese canal
 function limpiarFirmaCanvas(canvasId, canal) {
     const sc = document.getElementById(canvasId);
     if (sc) sc.getContext("2d").clearRect(0, 0, sc.width, sc.height);
@@ -743,7 +757,6 @@ function capturarFirma(canvasId) {
     const ctx  = tmp.getContext("2d");
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, tmp.width, tmp.height);
-    // FIX-006: drawImage con dimensiones explícitas
     ctx.drawImage(sc, 0, 0, tmp.width, tmp.height);
     return tmp.toDataURL("image/jpeg", 0.65);
 }
@@ -806,10 +819,7 @@ function irPaso(dir) {
     const btnSig = document.getElementById("btn-siguiente");
     const navBar = document.getElementById("nav-bar-pasos");
     if (pasoActual === 3) {
-        // FIX-005 + HOT-004: 150ms → DOM renderizado → init canvas → redibujar firmas guardadas
-        setTimeout(() => {
-            redibujarFirmasEnCanvas();
-        }, 150);
+        setTimeout(() => { redibujarFirmasEnCanvas(); }, 150);
         document.getElementById("nombre-entrega-firma").textContent = document.getElementById("entrega").value || "";
         document.getElementById("nombre-recibe-firma").textContent  = document.getElementById("recibe").value  || "";
     }
@@ -823,7 +833,6 @@ function irPaso(dir) {
     }
 }
 
-// HOT-005: validarPaso acepta firma guardada en URL (modo edición)
 function validarPaso() {
     if (pasoActual === 1) {
         if (!document.getElementById("entrega").value.trim()) { mostrarToast("⚠️ Ingresa quien entrega"); return false; }
@@ -833,9 +842,8 @@ function validarPaso() {
         if (!items.some(i => i.desc.trim())) { mostrarToast("⚠️ Agrega al menos un ítem con descripción"); return false; }
     }
     if (pasoActual === 3) {
-        // HOT-005: si hay URL guardada (modo edición), la firma ya existe → no bloquear
         const firmaVacia = (canvasId, urlGuardada) => {
-            if (urlGuardada) return false; // firma en DB → válida
+            if (urlGuardada) return false;
             const sc = document.getElementById(canvasId);
             if (!sc || sc.width === 0) return true;
             const datos = sc.getContext("2d").getImageData(0, 0, sc.width, sc.height).data;
@@ -871,21 +879,23 @@ function setStatusUI(estado) {
     sb.className   = "status-box " + m.cls;
     sb.textContent = m.txt;
 
-    const btnG  = document.getElementById("btn-guardar");
-    const btnI  = document.getElementById("btn-imprimir");
-    const btnD  = document.getElementById("btn-devolucion");
-    const btnC  = document.getElementById("btn-cerrar");
-    const btnW  = document.getElementById("btn-wa");
-    const btnVO = document.getElementById("btn-volver-emision");
-    const btnN  = document.getElementById("btn-nuevo");
+    const btnG   = document.getElementById("btn-guardar");
+    const btnI   = document.getElementById("btn-imprimir");
+    const btnPSQ = document.getElementById("btn-pdf-sin-qr"); // FASE1-003
+    const btnD   = document.getElementById("btn-devolucion");
+    const btnC   = document.getElementById("btn-cerrar");
+    const btnW   = document.getElementById("btn-wa");
+    const btnVO  = document.getElementById("btn-volver-emision");
+    const btnN   = document.getElementById("btn-nuevo");
 
-    btnG.style.display  = estado === "emision"    ? "block" : "none";
-    btnVO.style.display = estado === "emision"    ? "block" : "none";
-    btnI.style.display  = estado !== "emision"    ? "block" : "none";
-    btnD.style.display  = estado === "custodia"   ? "block" : "none";
-    btnC.style.display  = estado === "devolucion" ? "block" : "none";
-    btnW.style.display  = estado !== "emision"    ? "block" : "none";
-    btnN.style.display  = (estado === "devolucion" || estado === "cerrado") ? "block" : "none";
+    btnG.style.display   = estado === "emision"    ? "block" : "none";
+    btnVO.style.display  = estado === "emision"    ? "block" : "none";
+    btnI.style.display   = estado !== "emision"    ? "block" : "none";
+    btnPSQ.style.display = estado !== "emision"    ? "block" : "none"; // FASE1-003
+    btnD.style.display   = estado === "custodia"   ? "block" : "none";
+    btnC.style.display   = estado === "devolucion" ? "block" : "none";
+    btnW.style.display   = estado !== "emision"    ? "block" : "none";
+    btnN.style.display   = (estado === "devolucion" || estado === "cerrado") ? "block" : "none";
 }
 
 // ── GUARDAR ──────────────────────────────────────────────────────────────
@@ -920,7 +930,6 @@ function guardarVale() {
         mostrarModal("📋", "Vale Registrado", "BMI Calidad de Préstamo — Bien en custodia.", vale, () => imprimirVale());
         setTimeout(() => intentarSyncAutoMyCloud(), 1200);
     };
-    // HOT-003: tx.onerror en guardar
     tx.onerror = (e) => mostrarToast("⚠️ Error al guardar: " + e.target.error);
 }
 
@@ -932,7 +941,6 @@ function registrarDevolucion() {
     const req   = store.get(folio);
     req.onsuccess = () => {
         const data = req.result;
-        // FIX-003: null-check
         if (!data) { mostrarToast("⚠️ Registro no encontrado en base de datos"); return; }
         data.estado = "devolucion";
         data.historial.push({ fecha: new Date().toLocaleString("es-CL"), accion: "Devolución iniciada" });
@@ -942,7 +950,6 @@ function registrarDevolucion() {
             mostrarModal("↩️", "Devolución Registrada", "El proceso de devolución ha comenzado.", data, () => imprimirVale());
         };
     };
-    // HOT-003: tx.onerror en devolución
     tx.onerror = (e) => mostrarToast("⚠️ Error al registrar devolución: " + e.target.error);
 }
 
@@ -954,7 +961,6 @@ function cerrarVale() {
     const req   = store.get(folio);
     req.onsuccess = () => {
         const data = req.result;
-        // FIX-003: null-check
         if (!data) { mostrarToast("⚠️ Registro no encontrado en base de datos"); return; }
         data.estado      = "cerrado";
         data.fechaCierre = new Date().toLocaleString("es-CL");
@@ -965,14 +971,12 @@ function cerrarVale() {
             mostrarModal("✅", "Vale Cerrado", "BMI fue devuelto — Vale archivado.", data, () => imprimirVale());
         };
     };
-    // HOT-003: tx.onerror en cierre
     tx.onerror = (e) => mostrarToast("⚠️ Error al cerrar vale: " + e.target.error);
 }
 
 // ── IMPRIMIR / PDF ───────────────────────────────────────────────────────
-// HOT-001: const sb declarada UNA SOLA VEZ en el scope de la función
 function imprimirVale() {
-    const sb          = document.getElementById("status-form"); // única declaración
+    const sb          = document.getElementById("status-form");
     const estadoTexto = sb.textContent.replace("ESTADO: ", "").trim();
     const qrUrl       = QR_BASE_URL + "?folio=" + encodeURIComponent(folio);
 
@@ -992,7 +996,6 @@ function imprimirVale() {
     document.getElementById("p-lugar").textContent = lugar;
     document.getElementById("p-obs").textContent   = obs;
 
-    // HOT-001: sb ya existe arriba — solo declarar ps
     const ps = document.getElementById("p-status");
     ps.textContent = sb.textContent;
     const colorMap = { "s-custodia":"#c0392b","s-devolucion":"#d4680e","s-cerrado":"#1a9e5c","s-emision":"#f0c30e" };
@@ -1001,7 +1004,6 @@ function imprimirVale() {
     ps.style.backgroundColor = colorMap[cls] || "#f0c30e";
     ps.style.color           = textMap[cls]  || "#000";
 
-    // Tabla ítems
     const tbody = document.getElementById("p-items-tbody");
     tbody.innerHTML = "";
     items.filter(i => i.desc.trim()).forEach((it, idx) => {
@@ -1014,11 +1016,9 @@ function imprimirVale() {
         tbody.appendChild(tr);
     });
 
-    // Firmas en PDF
     if (sigEntregaURL) document.getElementById("p-sig-entrega").src = sigEntregaURL;
     if (sigRecibeURL)  document.getElementById("p-sig-recibe").src  = sigRecibeURL;
 
-    // QR en PDF
     const qrCont = document.getElementById("p-qr-container");
     qrCont.innerHTML = "";
     document.getElementById("p-qr-url").textContent = folio + " · " + estadoTexto;
@@ -1027,33 +1027,42 @@ function imprimirVale() {
     qrCont.appendChild(qrDiv);
     try {
         new QRCode(qrDiv, {
-            text:         qrUrl,
-            width:        120,
-            height:       120,
-            colorDark:    "#000",
-            colorLight:   "#fff",
+            text: qrUrl, width: 120, height: 120,
+            colorDark: "#000", colorLight: "#fff",
             correctLevel: QRCode.CorrectLevel.M
         });
     } catch(e) {
         qrDiv.innerHTML = `<div style="font-size:7px;text-align:center;word-break:break-all;padding:4px;">${folio}</div>`;
     }
 
-    // PDF: setTimeout 700ms — S25 necesita tiempo para renderizar QR antes de print
-    setTimeout(() => window.print(), 700);
+    setTimeout(() => window.print(), 800);
+}
+
+// FASE1-004 — PDF sin QR para terceros
+function imprimirValeSinQR() {
+    const qrCont = document.getElementById("p-qr-container");
+    const qrUrl  = document.getElementById("p-qr-url");
+    qrCont.style.visibility = "hidden";
+    qrUrl.style.visibility  = "hidden";
+    imprimirVale();
+    setTimeout(() => {
+        qrCont.style.visibility = "visible";
+        qrUrl.style.visibility  = "visible";
+    }, 2500);
 }
 
 // ── WHATSAPP ─────────────────────────────────────────────────────────────
 function enviarWhatsApp() {
     const qrUrl  = QR_BASE_URL + "?folio=" + encodeURIComponent(folio);
     const estado = document.getElementById("status-form").textContent;
-    const iList  = items.filter(i => i.desc).map((i, idx) => `  ${idx+1}. ${i.cant} ${i.un} — ${i.desc}`).join("%0A");
-    const msg    = `*SISTEMA POSEIDON'S SEAL*%0A*Academia de Guerra Aérea · FACH*%0A%0A` +
-                   `*Folio:* ${folio}%0A*Fecha:* ${document.getElementById("fecha-input").value}%0A*${estado}*%0A%0A` +
-                   `*Entrega:* ${document.getElementById("entrega").value}%0A` +
-                   `*Recibe:* ${document.getElementById("recibe").value}%0A` +
-                   `*Lugar:* ${document.getElementById("lugar").value || "—"}%0A%0A` +
-                   `*Ítems:*%0A${iList}%0A%0A🔗 _Ver registro:_ ${qrUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+    const iList  = items.filter(i => i.desc).map((i, idx) => `  ${idx+1}. ${i.cant} ${i.un} — ${i.desc}`).join("\n");
+    const texto  = `*SISTEMA POSEIDON'S SEAL*\n*Academia de Guerra Aérea · FACH*\n\n` +
+                   `*Folio:* ${folio}\n*Fecha:* ${document.getElementById("fecha-input").value}\n*${estado}*\n\n` +
+                   `*Entrega:* ${document.getElementById("entrega").value}\n` +
+                   `*Recibe:* ${document.getElementById("recibe").value}\n` +
+                   `*Lugar:* ${document.getElementById("lugar").value || "—"}\n\n` +
+                   `*Ítems:*\n${iList}\n\n🔗 _Ver registro:_ ${qrUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
 }
 
 // ── HISTORIAL ─────────────────────────────────────────────────────────────
@@ -1065,7 +1074,6 @@ function cargarHistorial() {
         rs.sort((a, b) => (b.fechaTs || 0) - (a.fechaTs || 0));
         renderHistorial(rs);
     };
-    // HOT-003: tx.onerror en historial
     tx.onerror = (e) => mostrarToast("⚠️ Error al cargar historial: " + e.target.error);
 }
 
@@ -1134,7 +1142,6 @@ function buscarVale() {
             div.appendChild(d);
         });
     };
-    // HOT-003: tx.onerror en buscar
     tx.onerror = (e) => mostrarToast("⚠️ Error en búsqueda: " + e.target.error);
 }
 
@@ -1176,12 +1183,10 @@ function cargarValePorQR(folioParam) {
             mostrarToast("⚠️ Folio no encontrado — usa Importar DB para sincronizar");
         }
     };
-    // HOT-003: onerror en cargar por QR
     tx.onerror = (e) => { nuevoVale(); mostrarToast("⚠️ Error IDB al cargar QR: " + e.target.error); };
 }
 
 // ── IR A PASO DIRECTO ─────────────────────────────────────────────────────
-// HOT-002: añade initCanvas + redibujado de firmas cuando paso === 3
 function irAPasoDirecto(paso) {
     document.querySelectorAll(".step-panel").forEach(p => p.classList.remove("activo"));
     document.querySelectorAll(".step-item").forEach(s => s.classList.remove("activo", "completo"));
@@ -1191,18 +1196,14 @@ function irAPasoDirecto(paso) {
     document.getElementById("si-"    + paso).classList.add("activo");
     document.getElementById("nav-bar-pasos").style.display = paso === 4 ? "none" : "flex";
     document.getElementById("btn-atras").disabled = (paso === 1);
-    // HOT-002 + FIX-005: canvas requiere 150ms igual que en irPaso()
     if (paso === 3) {
         document.getElementById("nombre-entrega-firma").textContent = document.getElementById("entrega").value || "";
         document.getElementById("nombre-recibe-firma").textContent  = document.getElementById("recibe").value  || "";
-        setTimeout(() => {
-            redibujarFirmasEnCanvas();
-        }, 150);
+        setTimeout(() => { redibujarFirmasEnCanvas(); }, 150);
     }
 }
 
 // ── NUEVO VALE ────────────────────────────────────────────────────────────
-// FIX-008: limpia TODOS los campos
 function nuevoVale() {
     folio = "AGA-" + new Date().getFullYear() + "-" + Date.now().toString().slice(-6);
     modoEdicion = false;
@@ -1239,7 +1240,6 @@ function exportarJSON() {
         a.click();
         mostrarToast("📤 Exportados " + data.length + " registros");
     };
-    // HOT-003: tx.onerror en exportar
     tx.onerror = (e) => mostrarToast("⚠️ Error al exportar: " + e.target.error);
 }
 
@@ -1249,7 +1249,6 @@ function importarJSON(event) {
     if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
     const reader = new FileReader();
     reader.onload = (e) => {
-        // FIX-007: try/catch — JSON corrupto no congela la app
         try {
             const data = JSON.parse(e.target.result);
             if (!Array.isArray(data)) { mostrarToast("⚠️ Archivo inválido — no es un backup AGA"); return; }
@@ -1259,7 +1258,6 @@ function importarJSON(event) {
                 mostrarToast("📥 Importados " + data.length + " registros");
                 cargarHistorial();
             };
-            // HOT-003: tx.onerror en importar
             tx.onerror = (e) => mostrarToast("⚠️ Error al importar: " + e.target.error);
         } catch(err) {
             mostrarToast("⚠️ Archivo JSON inválido o corrupto");
@@ -1283,12 +1281,14 @@ function cambiarTab(tab) {
         cargarHistorial();
     } else if (tab === "sync") {
         document.getElementById("screen-sync").style.display = "block";
+        // FASE1-007 — cargar config guardada incluyendo URL remota
         const cfg = localStorage.getItem(MYCLOUD_DB_KEY);
         if (cfg) {
             try {
-                const { ip, puerto } = JSON.parse(cfg);
+                const { ip, puerto, remote } = JSON.parse(cfg);
                 if (ip)     document.getElementById("mycloud-ip").value     = ip;
                 if (puerto) document.getElementById("mycloud-puerto").value = puerto;
+                if (remote) document.getElementById("mycloud-remote").value = remote;
             } catch(e) {}
         }
     } else {
@@ -1325,9 +1325,8 @@ function mostrarToast(msg) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// ESCÁNER QR — Html5-QRCode v2.3.8
+// ESCÁNER QR
 // ════════════════════════════════════════════════════════════════════════
-
 let html5QrCode    = null;
 let folioEscaneado = "";
 
@@ -1341,13 +1340,12 @@ function abrirEscaner() {
         return;
     }
     html5QrCode = new Html5Qrcode("reader");
-    // FIX-005 adaptado: delay antes de iniciar cámara en S25
     setTimeout(() => {
         html5QrCode.start(
             { facingMode: "environment" },
             { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
             (decodedText) => onQRDetectado(decodedText),
-            (err) => { /* errores de frame, ignorar */ }
+            (err) => {}
         ).catch(err => {
             mostrarToast("⚠️ No se pudo acceder a la cámara. Verifica permisos.");
             cerrarEscaner();
@@ -1379,7 +1377,6 @@ function confirmarEscaneo() {
     const store = tx.objectStore(STORE_NAME);
     const req   = store.get(folioEscaneado);
     req.onsuccess = () => {
-        // FIX-003: null-check
         if (!req.result) {
             mostrarToast("⚠️ Folio no encontrado — ¿Importaste el backup del otro dispositivo?");
             cambiarTab("buscar");
@@ -1389,7 +1386,6 @@ function confirmarEscaneo() {
         cargarValeEnFormulario(req.result);
         mostrarToast("📋 Vale cargado: " + folioEscaneado);
     };
-    // HOT-003: onerror en confirmar escaneo
     req.onerror = () => mostrarToast("⚠️ Error al buscar en base de datos");
 }
 
@@ -1410,46 +1406,79 @@ function cerrarEscaner() {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// SYNC WD MYCLOUD — API REST RED LOCAL
+// SYNC WD MYCLOUD — OPCIÓN A: Red local → MyCloud.com fallback
 // ════════════════════════════════════════════════════════════════════════
 
 const MYCLOUD_DB_KEY = "mycloud_config";
 const SYNC_FILE_PATH = "/api/2.1/rest/files?path=/Public/Poseidon_Seal/";
 const SYNC_FILENAME  = "poseidon_backup.json";
 
-// Cargar config guardada al inicio
-(function cargarConfigCloud() {
+// FASE1-007 — cargar config al arrancar (incluyendo URL remota)
+(function cargarConfigCloudInicio() {
     const cfg = localStorage.getItem(MYCLOUD_DB_KEY);
     if (cfg) {
         try {
-            const { ip, puerto } = JSON.parse(cfg);
+            const { ip, puerto, remote } = JSON.parse(cfg);
             if (ip)     document.getElementById("mycloud-ip").value     = ip;
             if (puerto) document.getElementById("mycloud-puerto").value = puerto;
+            const remEl = document.getElementById("mycloud-remote");
+            if (remote && remEl) remEl.value = remote;
         } catch(e) {}
     }
 })();
 
+// FASE1-006 — guardarConfigCloud persiste URL remota
 function guardarConfigCloud() {
     const ip     = document.getElementById("mycloud-ip").value.trim();
     const puerto = document.getElementById("mycloud-puerto").value.trim() || "8080";
-    if (!ip) { mostrarToast("⚠️ Ingresa la IP del MyCloud"); return; }
-    localStorage.setItem(MYCLOUD_DB_KEY, JSON.stringify({ ip, puerto }));
+    const remote = document.getElementById("mycloud-remote")?.value.trim() || "";
+    if (!ip && !remote) { mostrarToast("⚠️ Ingresa la IP local o URL remota del MyCloud"); return; }
+    localStorage.setItem(MYCLOUD_DB_KEY, JSON.stringify({ ip, puerto, remote }));
     mostrarToast("✅ Configuración guardada");
-    logSync("ok", `Configuración guardada: ${ip}:${puerto}`);
+    logSync("ok", `Local: ${ip}:${puerto} | Remoto: ${remote || "no configurado"}`);
 }
 
-function getMyCloudURL() {
+function getMyCloudURLLocal() {
     const ip     = document.getElementById("mycloud-ip").value.trim();
     const puerto = document.getElementById("mycloud-puerto").value.trim() || "8080";
-    if (!ip) { mostrarToast("⚠️ Configura la IP del MyCloud primero"); return null; }
+    if (!ip) return null;
     return `http://${ip}:${puerto}`;
 }
 
+function getMyCloudURLRemoto() {
+    const url = document.getElementById("mycloud-remote")?.value.trim();
+    return url || null;
+}
+
+// FASE1-005 — Opción A: intenta red local, fallback a MyCloud.com
+async function getMyCloudURL() {
+    const local = getMyCloudURLLocal();
+    if (local) {
+        try {
+            const res = await fetch(`${local}/api/2.1/rest/ping`, {
+                signal: AbortSignal.timeout(2000)
+            });
+            if (res.ok || res.status === 401) {
+                logSync("ok", "📶 Red local detectada — conectando directo al WD");
+                return local;
+            }
+        } catch(e) {}
+    }
+    const remoto = getMyCloudURLRemoto();
+    if (remoto) {
+        logSync("warn", "📡 WiFi local no disponible — usando MyCloud.com remoto");
+        return remoto;
+    }
+    mostrarToast("⚠️ Configura la IP o URL remota del MyCloud");
+    return null;
+}
+
+// FASE1-008 — await en verificar
 async function verificarMyCloud() {
-    const base = getMyCloudURL();
-    if (!base) return;
-    setCloudDot("naranja", "Verificando conexión...");
-    logSync("warn", `Conectando a ${base} ...`);
+    setCloudDot("naranja", "Detectando conexión...");
+    logSync("warn", "🔍 Buscando WD MyCloud...");
+    const base = await getMyCloudURL();
+    if (!base) { setCloudDot("rojo", "Sin configuración"); return; }
     try {
         const res = await fetch(`${base}/api/2.1/rest/ping`, {
             method: "GET",
@@ -1457,28 +1486,21 @@ async function verificarMyCloud() {
         });
         if (res.ok || res.status === 401) {
             setCloudDot("verde", "MyCloud conectado ✓");
-            logSync("ok", "✅ WD MyCloud encontrado en la red local");
+            logSync("ok", `✅ WD MyCloud disponible en: ${base}`);
             mostrarToast("✅ MyCloud conectado");
         } else {
             throw new Error("Status: " + res.status);
         }
     } catch(err) {
-        if (err.name === "TimeoutError") {
-            setCloudDot("rojo", "Sin respuesta (timeout)");
-            logSync("err", "❌ Sin respuesta — verifica IP y que MyCloud esté encendido");
-        } else if (err.message.includes("Failed to fetch")) {
-            setCloudDot("rojo", "No encontrado en red local");
-            logSync("err", "❌ No encontrado — ¿Están en la misma red WiFi?");
-        } else {
-            setCloudDot("rojo", "Error: " + err.message);
-            logSync("err", "❌ Error: " + err.message);
-        }
+        setCloudDot("rojo", "Sin respuesta");
+        logSync("err", "❌ No disponible: " + err.message);
         mostrarToast("⚠️ MyCloud no disponible");
     }
 }
 
+// FASE1-008 — await en subir
 async function syncSubirTodo() {
-    const base = getMyCloudURL();
+    const base = await getMyCloudURL();
     if (!base) return;
     if (!db)   { mostrarToast("⚠️ Base de datos no lista"); return; }
     logSync("warn", "⬆️ Iniciando subida al MyCloud...");
@@ -1498,7 +1520,7 @@ async function syncSubirTodo() {
             });
             if (res.ok || res.status === 201) {
                 setCloudDot("verde", "Subida exitosa ✓");
-                logSync("ok", `✅ ${data.length} registros subidos al MyCloud`);
+                logSync("ok", `✅ ${data.length} registros subidos`);
                 logSync("ok", `📁 Ruta: /Public/Poseidon_Seal/${SYNC_FILENAME}`);
                 mostrarToast(`✅ ${data.length} registros subidos`);
             } else {
@@ -1511,12 +1533,12 @@ async function syncSubirTodo() {
             mostrarToast("⚠️ Error — usa Exportar DB como alternativa");
         }
     };
-    // HOT-003: tx.onerror en sync subir
     tx.onerror = (e) => { setCloudDot("rojo","Error IDB"); logSync("err","❌ IDB: "+e.target.error); };
 }
 
+// FASE1-008 — await en descargar
 async function syncDescargarTodo() {
-    const base = getMyCloudURL();
+    const base = await getMyCloudURL();
     if (!base) return;
     if (!db)   { mostrarToast("⚠️ Base de datos no lista"); return; }
     logSync("warn", "⬇️ Descargando desde MyCloud...");
@@ -1526,7 +1548,6 @@ async function syncDescargarTodo() {
         const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) throw new Error("HTTP " + res.status);
         const text = await res.text();
-        // FIX-007: try/catch en parse
         let data;
         try { data = JSON.parse(text); } catch(e) { throw new Error("Archivo corrupto en MyCloud"); }
         if (!Array.isArray(data)) throw new Error("Formato inválido");
@@ -1534,11 +1555,10 @@ async function syncDescargarTodo() {
         data.forEach(item => tx.objectStore(STORE_NAME).put(item));
         tx.oncomplete = () => {
             setCloudDot("verde", "Descarga exitosa ✓");
-            logSync("ok", `✅ ${data.length} registros descargados del MyCloud`);
+            logSync("ok", `✅ ${data.length} registros descargados`);
             mostrarToast(`✅ ${data.length} registros importados`);
             cargarHistorial();
         };
-        // HOT-003: tx.onerror en sync descargar
         tx.onerror = (e) => { setCloudDot("rojo","Error IDB"); logSync("err","❌ IDB: "+e.target.error); };
     } catch(err) {
         setCloudDot("rojo", "Error en descarga");
@@ -1547,8 +1567,9 @@ async function syncDescargarTodo() {
     }
 }
 
+// FASE1-008 — await en bidireccional
 async function syncBidireccional() {
-    const base = getMyCloudURL();
+    const base = await getMyCloudURL();
     if (!base) return;
     if (!db)   { mostrarToast("⚠️ Base de datos no lista"); return; }
     logSync("warn", "🔄 Iniciando sync bidireccional...");
@@ -1601,21 +1622,19 @@ async function syncBidireccional() {
                 }
             } catch(err) {
                 setCloudDot("rojo", "Error subiendo mezcla");
-                logSync("err", "❌ Local actualizado pero falla al subir: " + err.message);
+                logSync("err", "❌ Local OK pero falla al subir: " + err.message);
                 mostrarToast("⚠️ Local OK pero falla MyCloud — exporta JSON como backup");
             }
             cargarHistorial();
         };
-        // HOT-003: tx2.onerror en sync bidireccional
         tx2.onerror = (e) => { setCloudDot("rojo","Error IDB merge"); logSync("err","❌ "+e.target.error); };
     };
-    // HOT-003: tx.onerror en lectura local
     tx.onerror = (e) => { setCloudDot("rojo","Error IDB lectura"); logSync("err","❌ "+e.target.error); };
 }
 
 // ── Helpers Sync ─────────────────────────────────────────────────────────
 function setCloudDot(color, texto) {
-    document.getElementById("cloud-dot").className        = "cloud-dot " + color;
+    document.getElementById("cloud-dot").className           = "cloud-dot " + color;
     document.getElementById("cloud-status-text").textContent = texto;
 }
 function logSync(tipo, msg) {
@@ -1641,7 +1660,7 @@ async function intentarSyncAutoMyCloud() {
             signal: AbortSignal.timeout(1500)
         });
         if (ping.ok || ping.status === 401) {
-            logSync("ok", "🔄 Auto-sync MyCloud...");
+            logSync("ok", "🔄 Auto-sync MyCloud local...");
             await syncSubirTodo();
         }
     } catch(e) {
