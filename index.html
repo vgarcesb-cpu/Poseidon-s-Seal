@@ -8,7 +8,7 @@
     ╔══════════════════════════════════════════════════════════════════════╗
     ║      SISTEMA POSEIDON'S SEAL — ACADEMIA DE GUERRA AÉREA — FACH      ║
     ║                                                                      ║
-    ║  Versión   : 2.1.0 — Fase 1: PDF sin QR + MyCloud Opción A         ║
+    ║  Versión   : 2.2.0 — Rediseño flujo operacional         ║
     ║  Repositorio: vgarcesb-cpu/Poseidon-s-Seal (GitHub Pages público)   ║
     ║  URL QR    : https://vgarcesb-cpu.github.io/Poseidon-s-Seal/?folio= ║
     ║  Plataformas: Mac · Windows · Samsung S25 · PWA offline             ║
@@ -120,7 +120,7 @@
 
         .status-box { text-align: center; font-weight: 800; padding: 12px; margin-bottom: 14px; border-radius: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; border: 3px solid #000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         .s-emision    { background: #f0c30e !important; color: #000 !important; }
-        .s-custodia   { background: #c0392b !important; color: #fff !important; }
+        .s-registrado { background: #c0392b !important; color: #fff !important; }
         .s-devolucion { background: #d4680e !important; color: #fff !important; }
         .s-cerrado    { background: #1a9e5c !important; color: #fff !important; }
 
@@ -165,12 +165,12 @@
         .h-folio  { font-family: "Courier New", monospace; font-size: 11px; font-weight: bold; color: var(--azul2); }
         .h-names  { font-size: 13px; font-weight: 700; color: #111; margin: 3px 0 2px; }
         .h-meta   { font-size: 11px; color: #888; display: flex; justify-content: space-between; align-items: center; }
-        .h-item.custodia   { border-left-color: var(--rojo); }
+        .h-item.registrado { border-left-color: var(--rojo); }
         .h-item.devolucion { border-left-color: var(--naranja); }
         .h-item.cerrado    { border-left-color: var(--verde); }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
         .b-emision    { background: #fef5cc; color: #8a6a00; }
-        .b-custodia   { background: #fde8e8; color: #8a1a1a; }
+        .b-registrado { background: #fde8e8; color: #8a1a1a; }
         .b-devolucion { background: #fef0e0; color: #8a4000; }
         .b-cerrado    { background: #e0f5ec; color: #0a5a2a; }
 
@@ -276,7 +276,7 @@
         <div class="nav-tab activo" id="tab-form"    onclick="cambiarTab('form')">📋 Vale</div>
         <div class="nav-tab"        id="tab-history" onclick="cambiarTab('history')">📚 Historial</div>
         <div class="nav-tab"        id="tab-buscar"  onclick="cambiarTab('buscar')">🔍 Buscar</div>
-        <div class="nav-tab"        id="tab-sync"    onclick="cambiarTab('sync')">☁️ Sync</div>
+        
     </div>
 
     <!-- SCREEN: FORMULARIO -->
@@ -394,18 +394,12 @@
                 <div style="margin-top:8px;">
                     <button class="btn btn-dorado"  id="btn-guardar"    onclick="guardarVale()">💾 GUARDAR Y REGISTRAR</button>
                     <button class="btn btn-azul"    id="btn-imprimir"   style="display:none" onclick="imprimirVale()">🖨️ IMPRIMIR / PDF</button>
-                    <button class="btn btn-azul"    id="btn-pdf-sin-qr" style="display:none" onclick="imprimirValeSinQR()">📄 PDF SIN QR (terceros)</button>
                     <button class="btn btn-naranja" id="btn-devolucion" style="display:none" onclick="registrarDevolucion()">↩️ REGISTRAR DEVOLUCIÓN</button>
                     <button class="btn btn-verde"   id="btn-cerrar"     style="display:none" onclick="cerrarVale()">✅ CERRAR VALE</button>
-                    <button class="btn btn-wa"      id="btn-wa"         style="display:none" onclick="enviarWhatsApp()">📱 ENVIAR POR WHATSAPP</button>
                     <button class="btn btn-outline" id="btn-volver-emision" onclick="irAPasoDirecto(3)">← VOLVER ATRÁS</button>
-                    <button class="btn btn-outline" id="btn-nuevo"      style="display:none" onclick="nuevoVale()">+ NUEVO VALE</button>
+                    <button class="btn btn-outline" id="btn-nuevo"      style="display:none" onclick="nuevoVale()">+ NUEVO PROCEDIMIENTO</button>
                 </div>
-                <div style="display:flex;gap:6px;margin-top:2px;">
-                    <button class="btn btn-gris" style="font-size:10px;padding:9px;" onclick="exportarJSON()">📤 Exportar DB</button>
-                    <button class="btn btn-gris" style="font-size:10px;padding:9px;" onclick="document.getElementById('input-import').click()">📥 Importar DB</button>
-                    <input type="file" id="input-import" style="display:none" accept=".json" onchange="importarJSON(event)">
-                </div>
+
             </div>
         </div>
 
@@ -419,7 +413,7 @@
     <div id="screen-history" class="screen sp" style="display:none;">
         <div class="filter-bar">
             <button class="f-btn activo" id="f-todos"      onclick="filtrarHistorial('todos')">Todos</button>
-            <button class="f-btn"         id="f-custodia"   onclick="filtrarHistorial('custodia')">Custodia</button>
+            <button class="f-btn"         id="f-registrado" onclick="filtrarHistorial('registrado')">Registrado</button>
             <button class="f-btn"         id="f-devolucion" onclick="filtrarHistorial('devolucion')">Devolución</button>
             <button class="f-btn"         id="f-cerrado"    onclick="filtrarHistorial('cerrado')">Cerrados</button>
         </div>
@@ -442,8 +436,8 @@
         <div id="resultado-busqueda"></div>
     </div>
 
-    <!-- SCREEN: SYNC MYCLOUD -->
-    <div id="screen-sync" class="screen sp" style="display:none;">
+    <!-- SCREEN: SYNC eliminado RD-001 -->
+    <div id="screen-sync-removed" style="display:none;">
         <div class="cloud-panel">
             <div class="card-title">☁️ WD MyCloud — Sincronización</div>
             <div class="cloud-status">
@@ -601,19 +595,14 @@
         </table>
         <table style="width:100%;border-collapse:collapse;">
             <tr>
-                <td style="width:36%;text-align:center;padding:0 8px;font-size:10px;vertical-align:bottom;">
+                <td style="width:50%;text-align:center;padding:0 8px;font-size:10px;vertical-align:bottom;">
                     <img id="p-sig-entrega" src="" style="height:48px;display:block;margin:0 auto 4px;max-width:170px;">
                     <div style="border-top:1px solid #000;padding-top:3px;"></div>
                     <div id="p-firma-entrega" style="font-weight:bold;margin-top:2px;font-size:10px;"></div>
                     <div style="color:#777;font-size:9px;">Firma — Quien Entrega</div>
                 </td>
-                <td style="width:30%;text-align:center;vertical-align:bottom;padding-bottom:4px;">
-                    <div id="p-qr-container" style="display:inline-block;"></div>
-                    <div style="font-size:8px;color:#555;margin-top:4px;font-weight:bold;">Escanear para identificar</div>
-                    <div id="p-qr-url" style="font-size:7px;color:#666;word-break:break-all;margin-top:2px;font-family:Courier New,monospace;"></div>
-                    <div style="font-size:6px;color:#aaa;margin-top:3px;border-top:1px dashed #ddd;padding-top:2px;">En caso de pérdida: contactar al responsable del folio indicado</div>
-                </td>
-                <td style="width:36%;text-align:center;padding:0 8px;font-size:10px;vertical-align:bottom;">
+
+                <td style="width:50%;text-align:center;padding:0 8px;font-size:10px;vertical-align:bottom;">
                     <img id="p-sig-recibe" src="" style="height:48px;display:block;margin:0 auto 4px;max-width:170px;">
                     <div style="border-top:1px solid #000;padding-top:3px;"></div>
                     <div id="p-firma-recibe" style="font-weight:bold;margin-top:2px;font-size:10px;"></div>
@@ -622,7 +611,7 @@
             </tr>
         </table>
         <div style="margin-top:12px;padding-top:6px;border-top:1px dashed #ccc;font-size:7px;color:#bbb;text-align:center;">
-            Sistema Poseidon's Seal · Academia de Guerra Aérea · Fuerza Aérea de Chile · v2.1.0
+            Sistema Poseidon's Seal · Academia de Guerra Aérea · Fuerza Aérea de Chile · v2.2.0
         </div>
     </div>
 </div>
@@ -871,7 +860,7 @@ function setStatusUI(estado) {
     const sb  = document.getElementById("status-form");
     const mapa = {
         emision:    { cls: "s-emision",    txt: "ESTADO: EN EMISIÓN" },
-        custodia:   { cls: "s-custodia",   txt: "ESTADO: EN CUSTODIA" },
+        registrado: { cls: "s-registrado", txt: "ESTADO: REGISTRADO" },
         devolucion: { cls: "s-devolucion", txt: "ESTADO: EN DEVOLUCIÓN" },
         cerrado:    { cls: "s-cerrado",    txt: "ESTADO: CERRADO" }
     };
@@ -892,10 +881,10 @@ function setStatusUI(estado) {
     btnVO.style.display  = estado === "emision"    ? "block" : "none";
     btnI.style.display   = estado !== "emision"    ? "block" : "none";
     btnPSQ.style.display = estado !== "emision"    ? "block" : "none"; // FASE1-003
-    btnD.style.display   = estado === "custodia"   ? "block" : "none";
+    btnD.style.display   = estado === "registrado" ? "block" : "none";
     btnC.style.display   = estado === "devolucion" ? "block" : "none";
     btnW.style.display   = estado !== "emision"    ? "block" : "none";
-    btnN.style.display   = (estado === "devolucion" || estado === "cerrado") ? "block" : "none";
+    btnN.style.display   = (estado === "registrado" || estado === "devolucion" || estado === "cerrado") ? "block" : "none";
 }
 
 // ── GUARDAR ──────────────────────────────────────────────────────────────
@@ -919,16 +908,15 @@ function guardarVale() {
         items:         items.filter(i => i.desc.trim()),
         firmaEntrega:  sigEntregaURL,
         firmaRecibe:   sigRecibeURL,
-        estado:        "custodia",
-        historial: [{ fecha: new Date().toLocaleString("es-CL"), accion: modoEdicion ? "Vale actualizado" : "Vale creado — bien en custodia" }]
+        estado:        "registrado",
+        historial: [{ fecha: new Date().toLocaleString("es-CL"), accion: modoEdicion ? "Vale actualizado" : "Vale creado — bien registrado" }]
     };
     const tx = db.transaction(STORE_NAME, "readwrite");
     tx.objectStore(STORE_NAME).put(vale);
     tx.oncomplete = () => {
         modoEdicion = true;
-        setStatusUI("custodia");
-        mostrarModal("📋", "Vale Registrado", "BMI Calidad de Préstamo — Bien en custodia.", vale, () => imprimirVale());
-        setTimeout(() => intentarSyncAutoMyCloud(), 1200);
+        setStatusUI("registrado");
+        mostrarModal("📋", "Vale Registrado", "Bien en custodia — registrado correctamente.", vale, () => imprimirVale());
     };
     tx.onerror = (e) => mostrarToast("⚠️ Error al guardar: " + e.target.error);
 }
@@ -978,7 +966,6 @@ function cerrarVale() {
 function imprimirVale() {
     const sb          = document.getElementById("status-form");
     const estadoTexto = sb.textContent.replace("ESTADO: ", "").trim();
-    const qrUrl       = QR_BASE_URL + "?folio=" + encodeURIComponent(folio);
 
     document.getElementById("p-folio").textContent          = folio;
     document.getElementById("p-fecha").textContent          = document.getElementById("fecha-input").value;
@@ -998,8 +985,8 @@ function imprimirVale() {
 
     const ps = document.getElementById("p-status");
     ps.textContent = sb.textContent;
-    const colorMap = { "s-custodia":"#c0392b","s-devolucion":"#d4680e","s-cerrado":"#1a9e5c","s-emision":"#f0c30e" };
-    const textMap  = { "s-custodia":"#fff",   "s-devolucion":"#fff",   "s-cerrado":"#fff",   "s-emision":"#000" };
+    const colorMap = { "s-registrado":"#c0392b","s-custodia":"#c0392b","s-devolucion":"#d4680e","s-cerrado":"#1a9e5c","s-emision":"#f0c30e" };
+    const textMap  = { "s-registrado":"#fff",   "s-custodia":"#fff",   "s-devolucion":"#fff",   "s-cerrado":"#fff",   "s-emision":"#000" };
     const cls = Array.from(sb.classList).find(c => c.startsWith("s-")) || "s-emision";
     ps.style.backgroundColor = colorMap[cls] || "#f0c30e";
     ps.style.color           = textMap[cls]  || "#000";
@@ -1019,51 +1006,12 @@ function imprimirVale() {
     if (sigEntregaURL) document.getElementById("p-sig-entrega").src = sigEntregaURL;
     if (sigRecibeURL)  document.getElementById("p-sig-recibe").src  = sigRecibeURL;
 
-    const qrCont = document.getElementById("p-qr-container");
-    qrCont.innerHTML = "";
-    document.getElementById("p-qr-url").textContent = folio + " · " + estadoTexto;
-    const qrDiv = document.createElement("div");
-    qrDiv.style.cssText = "width:120px;height:120px;margin:0 auto;";
-    qrCont.appendChild(qrDiv);
-    try {
-        new QRCode(qrDiv, {
-            text: qrUrl, width: 120, height: 120,
-            colorDark: "#000", colorLight: "#fff",
-            correctLevel: QRCode.CorrectLevel.M
-        });
-    } catch(e) {
-        qrDiv.innerHTML = `<div style="font-size:7px;text-align:center;word-break:break-all;padding:4px;">${folio}</div>`;
-    }
+    // RD-004: Sin QR
 
     setTimeout(() => window.print(), 800);
 }
 
-// FASE1-004 — PDF sin QR para terceros
-function imprimirValeSinQR() {
-    const qrCont = document.getElementById("p-qr-container");
-    const qrUrl  = document.getElementById("p-qr-url");
-    qrCont.style.visibility = "hidden";
-    qrUrl.style.visibility  = "hidden";
-    imprimirVale();
-    setTimeout(() => {
-        qrCont.style.visibility = "visible";
-        qrUrl.style.visibility  = "visible";
-    }, 2500);
-}
 
-// ── WHATSAPP ─────────────────────────────────────────────────────────────
-function enviarWhatsApp() {
-    const qrUrl  = QR_BASE_URL + "?folio=" + encodeURIComponent(folio);
-    const estado = document.getElementById("status-form").textContent;
-    const iList  = items.filter(i => i.desc).map((i, idx) => `  ${idx+1}. ${i.cant} ${i.un} — ${i.desc}`).join("\n");
-    const texto  = `*SISTEMA POSEIDON'S SEAL*\n*Academia de Guerra Aérea · FACH*\n\n` +
-                   `*Folio:* ${folio}\n*Fecha:* ${document.getElementById("fecha-input").value}\n*${estado}*\n\n` +
-                   `*Entrega:* ${document.getElementById("entrega").value}\n` +
-                   `*Recibe:* ${document.getElementById("recibe").value}\n` +
-                   `*Lugar:* ${document.getElementById("lugar").value || "—"}\n\n` +
-                   `*Ítems:*\n${iList}\n\n🔗 _Ver registro:_ ${qrUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
-}
 
 // ── HISTORIAL ─────────────────────────────────────────────────────────────
 function cargarHistorial() {
@@ -1087,8 +1035,8 @@ function renderHistorial(rs) {
     rs.forEach(r => {
         const d = document.createElement("div");
         d.className = `h-item ${r.estado || ""}`;
-        const bcls = { custodia:"b-custodia", devolucion:"b-devolucion", cerrado:"b-cerrado" }[r.estado] || "b-emision";
-        const blbl = { custodia:"En Custodia", devolucion:"En Devolución", cerrado:"Cerrado" }[r.estado] || "En Emisión";
+        const bcls = { registrado:"b-registrado", devolucion:"b-devolucion", cerrado:"b-cerrado" }[r.estado] || "b-emision";
+        const blbl = { registrado:"Registrado", devolucion:"En Devolución", cerrado:"Cerrado" }[r.estado] || "En Emisión";
         d.innerHTML = `
             <div class="h-folio">${r.id}</div>
             <div class="h-names">${r.entrega||"—"} → ${r.recibe||"—"}</div>
@@ -1129,8 +1077,8 @@ function buscarVale() {
         rs.forEach(r => {
             const d = document.createElement("div");
             d.className = `h-item ${r.estado||""}`;
-            const bcls = { custodia:"b-custodia", devolucion:"b-devolucion", cerrado:"b-cerrado" }[r.estado] || "b-emision";
-            const blbl = { custodia:"En Custodia", devolucion:"En Devolución", cerrado:"Cerrado" }[r.estado] || "En Emisión";
+            const bcls = { registrado:"b-registrado", devolucion:"b-devolucion", cerrado:"b-cerrado" }[r.estado] || "b-emision";
+            const blbl = { registrado:"Registrado", devolucion:"En Devolución", cerrado:"Cerrado" }[r.estado] || "En Emisión";
             d.innerHTML = `
                 <div class="h-folio">${r.id}</div>
                 <div class="h-names">${r.entrega||"—"} → ${r.recibe||"—"}</div>
@@ -1163,7 +1111,8 @@ function cargarValeEnFormulario(r) {
     sigEntregaURL = r.firmaEntrega || "";
     sigRecibeURL  = r.firmaRecibe  || "";
     actualizarResumen();
-    setStatusUI(r.estado || "emision");
+    const estadoMigrado = r.estado === "custodia" ? "registrado" : (r.estado || "emision");
+    setStatusUI(estadoMigrado);
     irAPasoDirecto(4);
     cambiarTab("form");
 }
@@ -1228,49 +1177,12 @@ function nuevoVale() {
 }
 
 // ── EXPORT / IMPORT ───────────────────────────────────────────────────────
-function exportarJSON() {
-    if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
-    const tx = db.transaction(STORE_NAME, "readonly");
-    tx.objectStore(STORE_NAME).getAll().onsuccess = (e) => {
-        const data = e.target.result || [];
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const a    = document.createElement("a");
-        a.href     = URL.createObjectURL(blob);
-        a.download = "PoseidonSeal_Backup_" + Date.now() + ".json";
-        a.click();
-        mostrarToast("📤 Exportados " + data.length + " registros");
-    };
-    tx.onerror = (e) => mostrarToast("⚠️ Error al exportar: " + e.target.error);
-}
 
-function importarJSON(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (!db) { mostrarToast("⚠️ Base de datos no lista"); return; }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const data = JSON.parse(e.target.result);
-            if (!Array.isArray(data)) { mostrarToast("⚠️ Archivo inválido — no es un backup AGA"); return; }
-            const tx = db.transaction(STORE_NAME, "readwrite");
-            data.forEach(item => tx.objectStore(STORE_NAME).put(item));
-            tx.oncomplete = () => {
-                mostrarToast("📥 Importados " + data.length + " registros");
-                cargarHistorial();
-            };
-            tx.onerror = (e) => mostrarToast("⚠️ Error al importar: " + e.target.error);
-        } catch(err) {
-            mostrarToast("⚠️ Archivo JSON inválido o corrupto");
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = "";
-}
 
 // ── TABS ──────────────────────────────────────────────────────────────────
 function cambiarTab(tab) {
     document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("activo"));
-    ["form","history","buscar","sync"].forEach(s => {
+    ["form","history","buscar"].forEach(s => {
         document.getElementById("screen-" + s).style.display = "none";
     });
     document.getElementById("tab-" + tab).classList.add("activo");
@@ -1279,18 +1191,6 @@ function cambiarTab(tab) {
     } else if (tab === "history") {
         document.getElementById("screen-history").style.display = "block";
         cargarHistorial();
-    } else if (tab === "sync") {
-        document.getElementById("screen-sync").style.display = "block";
-        // FASE1-007 — cargar config guardada incluyendo URL remota
-        const cfg = localStorage.getItem(MYCLOUD_DB_KEY);
-        if (cfg) {
-            try {
-                const { ip, puerto, remote } = JSON.parse(cfg);
-                if (ip)     document.getElementById("mycloud-ip").value     = ip;
-                if (puerto) document.getElementById("mycloud-puerto").value = puerto;
-                if (remote) document.getElementById("mycloud-remote").value = remote;
-            } catch(e) {}
-        }
     } else {
         document.getElementById("screen-buscar").style.display = "block";
     }
@@ -1529,8 +1429,8 @@ async function syncSubirTodo() {
         } catch(err) {
             setCloudDot("rojo", "Error en subida");
             logSync("err", "❌ Error subiendo: " + err.message);
-            logSync("warn", "💡 Alternativa: usa Exportar DB para backup manual");
-            mostrarToast("⚠️ Error — usa Exportar DB como alternativa");
+            logSync("warn", "💡 Alternativa: usa Exportar Archivos para backup manual");
+            mostrarToast("⚠️ Error — usa Exportar Archivos como alternativa");
         }
     };
     tx.onerror = (e) => { setCloudDot("rojo","Error IDB"); logSync("err","❌ IDB: "+e.target.error); };
