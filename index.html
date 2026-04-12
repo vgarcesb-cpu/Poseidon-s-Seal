@@ -1008,7 +1008,24 @@ function imprimirVale() {
 
     // RD-004: Sin QR
 
-    setTimeout(() => window.print(), 800);
+    let _volvioDeImpresion = false;
+    window.onafterprint = () => {
+        if (_volvioDeImpresion) return;
+        _volvioDeImpresion = true;
+        window.onafterprint = null;
+        if (!modoEdicion) return;
+        setTimeout(() => nuevoVale(), 500);
+    };
+    setTimeout(() => {
+        window.print();
+        // Fallback por si onafterprint no dispara en S25
+        setTimeout(() => {
+            if (!_volvioDeImpresion) {
+                _volvioDeImpresion = true;
+                window.onafterprint = null;
+            }
+        }, 5000);
+    }, 800);
 }
 
 
@@ -1113,8 +1130,8 @@ function cargarValeEnFormulario(r) {
     actualizarResumen();
     const estadoMigrado = r.estado === "custodia" ? "registrado" : (r.estado || "emision");
     setStatusUI(estadoMigrado);
-    irAPasoDirecto(4);
     cambiarTab("form");
+    setTimeout(() => irAPasoDirecto(4), 50);
 }
 
 // ── CARGAR POR QR ─────────────────────────────────────────────────────────
